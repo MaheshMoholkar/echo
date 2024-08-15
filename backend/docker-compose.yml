@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: "postgres:15.2-alpine"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: echo-db
+    ports:
+      - "5432:5432"
