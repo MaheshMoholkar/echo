@@ -5,6 +5,7 @@ import axios from "axios";
 import { CHECK_USER_ROUTE, LOGIN_USER_ROUTE } from "../utils/ApiRoutes";
 import { useAppContext } from "../context/AppContext";
 import { useState } from "react";
+import convertImageToBase64 from "../utils/util";
 
 interface LoginData {
   email: string;
@@ -30,14 +31,14 @@ function Login() {
 
   const handleLogin = async () => {
     const { data } = await axios.post(LOGIN_USER_ROUTE, form);
-    console.log(data);
-    if (!data.status) {
-      //TODO toast
-      navigate("/register");
-    } else {
+
+    if (data.status) {
       //TODO toast
       setLoggedIn(true);
       navigate("/home");
+    } else {
+      //TODO toast
+      navigate("/register");
     }
   };
 
@@ -57,6 +58,15 @@ function Login() {
         } else {
           //TODO toast
           setLoggedIn(true);
+          let profileImage = "";
+          (async () => {
+            try {
+              const base64 = await convertImageToBase64(profileImage as string);
+              profileImage = base64;
+            } catch (error) {
+              console.error("Error converting image:", error);
+            }
+          })();
           setUser({ name, email, profileImage });
           navigate("/home");
         }
@@ -129,9 +139,7 @@ function Login() {
           </div>
           <div className="w-full flex items-center justify-center cursor-default">
             <div className="w-full border border-black h-[1px]"></div>
-            <p className=" text-lg px-2 absolute text-black/80 bg-zinc-50">
-              or
-            </p>
+            <p className=" text-lg px-2 absolute text-black/80 bg-white">or</p>
           </div>
           <button
             className="w-full text-black my-2 bg-white border-2 border-black font-semibold rounded-md p-4 text-center flex items-center justify-center"

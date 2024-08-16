@@ -9,12 +9,12 @@ import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
 
 function Home() {
-  const { user, setUser } = useAppContext()!;
+  const { user, setUser, loggedIn } = useAppContext()!;
   const navigate = useNavigate();
   const [redirectLogin, setRedirectLogin] = useState(false);
 
   useEffect(() => {
-    if (redirectLogin) navigate("/login");
+    if (redirectLogin && !loggedIn) navigate("/login");
   }, [redirectLogin]);
 
   onAuthStateChanged(firebaseAuth, async (currentUser) => {
