@@ -11,6 +11,8 @@ export type AppContextType = {
   setUser: (user: User) => void;
   loggedIn: boolean | undefined;
   setLoggedIn: (loggedIn: boolean) => void;
+  activeUser: User | undefined;
+  setActiveUser: (user: User) => void;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -22,6 +24,7 @@ export const AppContextProvider = ({
 }) => {
   const [loggedIn, setLoggedIn] = useState<boolean | undefined>(undefined);
   const [user, setUser] = useState<User>();
+  const [activeUser, setActiveUser] = useState<User>();
 
   const handleSetLoggedIn = (loggedIn: boolean) => {
     setLoggedIn(loggedIn);
@@ -37,6 +40,8 @@ export const AppContextProvider = ({
         setUser: handleSetUser,
         loggedIn: loggedIn,
         setLoggedIn: handleSetLoggedIn,
+        activeUser: activeUser,
+        setActiveUser: setActiveUser,
       }}
     >
       {children}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import EmptyConversation from "../components/EmptyConversation";
+// import EmptyChat from "../components/EmptyChat";
 import Layout from "../layout/HomeLayout";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "../utils/firebaseConfig";
@@ -7,9 +7,11 @@ import axios from "axios";
 import { CHECK_USER_ROUTE } from "../utils/ApiRoutes";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
+import Chat from "../components/Chat";
+import EmptyChat from "../components/EmptyChat";
 
 function Home() {
-  const { user, setUser, loggedIn } = useAppContext()!;
+  const { user, setUser, loggedIn, activeUser } = useAppContext()!;
   const navigate = useNavigate();
   const [redirectLogin, setRedirectLogin] = useState(false);
 
@@ -31,11 +33,7 @@ function Home() {
       setUser({ name, email, profileImage });
     }
   });
-  return (
-    <Layout>
-      <EmptyConversation />
-    </Layout>
-  );
+  return <Layout>{activeUser ? <Chat /> : <EmptyChat />}</Layout>;
 }
 
 export default Home;

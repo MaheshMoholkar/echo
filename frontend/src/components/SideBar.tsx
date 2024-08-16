@@ -2,7 +2,7 @@ import ConversationHeader from "./ConversationHeader";
 import ConversationList from "./ConversationList";
 import Search from "./Search";
 
-function Conversations() {
+function SideBar() {
   return (
     <>
       <div className="flex flex-col max-h-screen z-20">
@@ -16,4 +16,4 @@ function Conversations() {
   );
 }
 
-export default Conversations;
+export default SideBar;

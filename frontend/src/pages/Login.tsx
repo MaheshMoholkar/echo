@@ -31,9 +31,11 @@ function Login() {
 
   const handleLogin = async () => {
     const { data } = await axios.post(LOGIN_USER_ROUTE, form);
-
+    console.log(data);
     if (data.status) {
       //TODO toast
+      let { email, name, profileImage } = data.user;
+      setUser({ email, name, profileImage });
       setLoggedIn(true);
       navigate("/home");
     } else {

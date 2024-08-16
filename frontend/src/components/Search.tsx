@@ -18,7 +18,7 @@ function Search() {
           <ListFilter className="text-zinc-500 cursor-pointer text-lg" />
         </div>
       </div>
-      <div className="w-full border border-zinc-300 h-[1px]"></div>
+      <div className="w-full border border-zinc-100 h-[1px]"></div>
       <div className="flex p-3 px-4 gap-3 text-zinc-700 font-semibold">
         <button className="border border-zinc-300 rounded-full px-3 py-1 text-xs shadow-sm">
           All
