@@ -1,18 +1,28 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import StoreProvider from "./state/redux";
-import Home from "./pages/home";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import { AppContextProvider } from "./context/AppContext";
 
 const router = createBrowserRouter([
   {
-    path: "/",
+    path: "/home",
     element: <Home />,
+  },
+  {
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/register",
+    element: <Register />,
   },
 ]);
 function App() {
   return (
-    <StoreProvider>
-      <RouterProvider router={router} />;
-    </StoreProvider>
+    <AppContextProvider>
+      <RouterProvider router={router} />
+    </AppContextProvider>
   );
 }
 
