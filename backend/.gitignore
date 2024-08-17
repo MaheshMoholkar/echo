@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-db/migrations/
+src/db/migrations/
 
 .env 
 

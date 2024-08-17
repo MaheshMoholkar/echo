@@ -25,12 +25,11 @@ function Home() {
       const { data } = await axios.post(CHECK_USER_ROUTE, {
         email: currentUser.email,
       });
-      console.log({ data });
       if (!data.status) {
         navigate("/login");
       }
-      let { name, email, profileImage } = data.user;
-      setUser({ name, email, profileImage });
+      let { id, name, email, profileImage } = data.user;
+      setUser({ id, name, email, profileImage });
     }
   });
   return <Layout>{activeUser ? <Chat /> : <EmptyChat />}</Layout>;

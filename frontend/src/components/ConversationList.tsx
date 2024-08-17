@@ -16,7 +16,6 @@ function ConversationList() {
   }, []);
 
   const handleClick = (user: any) => {
-    console.log(user);
     setActiveUser(user);
   };
   return (

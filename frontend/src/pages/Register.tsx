@@ -41,10 +41,10 @@ function Login() {
     const { data } = await axios.post(REGISTER_USER_ROUTE, form);
     console.log(data);
     if (!data.status) {
-      //TODO toast
+      //TODO: toast
       navigate("/login");
     } else {
-      //TODO toast
+      //TODO: toast
       setLoggedIn(true);
       navigate("/home");
     }
@@ -65,18 +65,18 @@ function Login() {
           console.error("Error converting image:", error);
         }
       })();
-      setUser({ name, email, profileImage });
 
       if (email) {
         const { data } = await axios.post(CHECK_USER_ROUTE, { email });
         console.log(data);
+        let id = data.user.id;
         if (!data.status) {
-          // toast
+          //TODO: toast
           setValidated(true);
         } else {
-          // toast
+          //TODO: toast
           setLoggedIn(true);
-          setUser({ name, email, profileImage });
+          setUser({ id, name, email, profileImage });
           navigate("/home");
         }
       }

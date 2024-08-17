@@ -1,6 +1,7 @@
 import React, { useContext, useState } from "react";
 
 export type User = {
+  id: string | null;
   name: string | null;
   email: string | null;
   profileImage: string | null;
