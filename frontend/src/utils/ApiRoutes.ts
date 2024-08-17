@@ -9,3 +9,4 @@ export const LOGIN_USER_ROUTE = `${AUTH_ROUTE}/login-user`;
 export const REGISTER_USER_ROUTE = `${AUTH_ROUTE}/register-user`;
 export const GET_USERS_ROUTE = `${USER_ROUTE}/get-users`;
 export const ADD_MESSAGE_ROUTE = `${MESSAGE_ROUTE}/add-message`;
+export const GET_MESSAGE_ROUTE = `${MESSAGE_ROUTE}/get-messages`;

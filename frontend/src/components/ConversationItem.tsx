@@ -1,6 +1,7 @@
 import { Dot } from "lucide-react";
 import Avatar from "./Avatar";
 import { useState } from "react";
+import { useAppContext } from "../context/AppContext";
 
 function ConversationItem({
   name,
@@ -14,10 +15,13 @@ function ConversationItem({
   handleClick: (user: any) => void;
 }) {
   const [isOnline, _setIsOnline] = useState(true);
+  const { activeUser } = useAppContext()!;
   return (
     <div
       onClick={handleClick}
-      className="flex cursor-pointer items-center ml-1 h-16 border-white border-l-4 hover:border-l-red-500"
+      className={`flex cursor-pointer items-center ml-1 h-16 border-white border-l-4 ${
+        activeUser?.name == name ? "border-l-red-500" : ""
+      }`}
     >
       <div className="flex gap-5 min-w-fit px-5 pb-1">
         <Avatar img={img} />

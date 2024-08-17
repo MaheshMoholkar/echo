@@ -15,6 +15,8 @@ function Home() {
   const navigate = useNavigate();
   const [redirectLogin, setRedirectLogin] = useState(false);
 
+  console.log(user, activeUser);
+
   useEffect(() => {
     if (redirectLogin && !loggedIn) navigate("/login");
   }, [redirectLogin]);
