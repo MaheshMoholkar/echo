@@ -1,4 +1,4 @@
-const HOST = "http://localhost:3000";
+export const HOST = "http://localhost:3000";
 
 const AUTH_ROUTE = `${HOST}/api/auth`;
 const USER_ROUTE = `${HOST}/api/user`;

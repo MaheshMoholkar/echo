@@ -39,7 +39,6 @@ function Login() {
 
   const handleRegister = async () => {
     const { data } = await axios.post(REGISTER_USER_ROUTE, form);
-    console.log(data);
     if (!data.status) {
       //TODO: toast
       navigate("/login");

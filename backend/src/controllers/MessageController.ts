@@ -24,7 +24,7 @@ export const addMessage = async (req: any, res: any, next: any) => {
       .returning()
       .execute();
 
-    return res.status(201).send({ message: newMessage });
+    return res.status(201).send({ message: newMessage[0] });
   } catch (err) {
     next(err);
   }

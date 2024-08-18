@@ -52,7 +52,7 @@ function Login() {
       if (email) {
         const { data } = await axios.post(CHECK_USER_ROUTE, { email });
         console.log(data);
-        let id = data.user.id;
+        let id = data?.user?.id;
         if (!data.status) {
           //TODO: toast
           setUser({ id, name, email, profileImage });

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-// import EmptyChat from "../components/EmptyChat";
 import Layout from "../layout/HomeLayout";
 import { onAuthStateChanged } from "firebase/auth";
 import { firebaseAuth } from "../utils/firebaseConfig";
@@ -13,9 +12,8 @@ import EmptyChat from "../components/EmptyChat";
 function Home() {
   const { user, setUser, loggedIn, activeUser } = useAppContext()!;
   const navigate = useNavigate();
-  const [redirectLogin, setRedirectLogin] = useState(false);
 
-  console.log(user, activeUser);
+  const [redirectLogin, setRedirectLogin] = useState(false);
 
   useEffect(() => {
     if (redirectLogin && !loggedIn) navigate("/login");
