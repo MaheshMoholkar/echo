@@ -1,4 +1,5 @@
-# The homelab services Echo needs. `lab up` starts them and writes .env.lab.
+# The services Echo needs, for the author's homelab CLI: `lab up` starts them
+# and writes .env.lab. Not needed otherwise: see .env.example.
 project: echo
 services:
   postgres: { extensions: [vector] }

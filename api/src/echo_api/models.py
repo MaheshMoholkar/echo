@@ -30,7 +30,7 @@ class ConversationStatus(StrEnum):
 class MessageRole(StrEnum):
     customer = "customer"  # the widget visitor
     assistant = "assistant"  # the AI agent
-    operator = "operator"  # a human from the organization (milestone 5)
+    operator = "operator"  # a human from the organization
 
 
 def _enum(cls: type[StrEnum], name: str) -> Enum:
@@ -118,7 +118,7 @@ class Message(Base):
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
 
 
-# --- knowledge base (milestone 4) ---------------------------------------------
+# --- knowledge base ------------------------------------------------------------
 
 
 class DocumentStatus(StrEnum):

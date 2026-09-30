@@ -7,7 +7,7 @@ RAG"), but the 4B model skipped the tool for "Do you have a mobile app?" and
 invented "Yes, iOS and Android". Always searching makes grounding
 non-optional, and it's one model call per turn instead of two.
 
-Prompt layout, for Ollama's prompt cache (prefill is ~360 tok/s on the mini,
+Prompt layout, for Ollama's prompt cache (prefill is ~360 tok/s on an M4 Mac mini,
 a cached prefix ~25,000 tok/s):
 
     [instructions + tool definitions]    identical on every request

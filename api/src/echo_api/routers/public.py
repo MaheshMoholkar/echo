@@ -106,7 +106,7 @@ async def send_message(
         event="message", data=MessageOut.model_validate(customer_message)
     )
 
-    # Escalated: a human operator answers (milestone 5); the AI stays quiet.
+    # Escalated: a human operator answers; the AI stays quiet.
     if conversation.status == ConversationStatus.unresolved:
         reply = ""
         try:

@@ -1,17 +1,18 @@
-# Echo — local-only AI support app. Services come from the homelab (lab.yml).
+# Echo: AI customer support (chat + voice) that runs entirely on one Mac.
+# Needs Postgres with pgvector and Ollama; settings come from the root .env.
 export PYDANTIC_AI_NO_BANNER := 1
 
 # Next.js only reads env files from web/, so export the root ones for it:
-# .env.lab (written by `lab up`) then .env (local secrets, overrides).
-LOAD_ENV := set -a; . ../.env.lab; [ -f ../.env ] && . ../.env; set +a;
+# .env.lab (optional, written by the author's homelab tool) then .env.
+LOAD_ENV := set -a; [ -f ../.env.lab ] && . ../.env.lab; [ -f ../.env ] && . ../.env; set +a;
 
 KOKORO_DIR := $(HOME)/.cache/pipecat/kokoro-onnx
 KOKORO_RELEASE := https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
 
-.PHONY: setup migrate auth-migrate voice-models dev web api voice test check smoke eval voice-eval voice-latency
+.PHONY: setup migrate auth-migrate voice-models dev web api voice test check seed eval voice-eval voice-latency
 
-setup:            ## start lab services, install deps, create tables, fetch voice models
-	lab up
+setup:            ## install deps, create tables, fetch voice models
+	if command -v lab >/dev/null; then lab up; fi  # the author's homelab (lab.yml)
 	cd api && uv sync
 	cd voice && uv sync
 	cd web && pnpm install
@@ -41,7 +42,10 @@ api:
 voice:            ## the voice bot (no auto-reload: its models take seconds to load)
 	cd voice && uv run echo-voice
 
-test:             ## api + voice tests (need lab Postgres; the LLM, embeddings and OCR are faked)
+seed:             ## a demo login, organization and the sample knowledge base (with make dev running)
+	cd api && uv run python scripts/seed.py
+
+test:             ## api + voice tests (need Postgres; the LLM, embeddings and OCR are faked)
 	cd api && uv run pytest -q
 	cd voice && uv run pytest -q
 
@@ -49,9 +53,6 @@ check:            ## lint, format and type checks
 	cd api && uv run ruff check . && uv run ruff format --check .
 	cd voice && uv run ruff check . && uv run ruff format --check .
 	cd web && pnpm lint && pnpm typecheck
-
-smoke:            ## PydanticAI -> Ollama tool-calling round trip, prints every message
-	cd api && uv run python scripts/llm_smoke.py
 
 eval:             ## grounding eval with the real model: make eval ORG=<organization id> [RUNS=2]
 	cd api && uv run python scripts/eval_grounding.py $(ORG) $(or $(RUNS),1)

@@ -22,6 +22,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # pgvector must be installed in Postgres; this enables it in the database.
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.create_table(
         "documents",
         sa.Column("id", sa.Uuid(), nullable=False),

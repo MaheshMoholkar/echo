@@ -5,7 +5,7 @@ phonemizer turns the text into phonemes as before, and only the neural
 network moves to the GPU, through mlx-audio. mlx-audio's own text front end
 (misaki) would pull in spaCy, and isn't needed.
 
-Measured on the mini while the LLM was generating (as it is during a reply):
+Measured on an M4 Mac mini while the LLM was generating (as it is during a reply):
 
     "Sure."                                  0.56 s on the CPU → 0.11 s
     "Delivery usually takes three to five…"  1.71 s → 0.52 s
@@ -50,8 +50,8 @@ mlx_thread = ThreadPoolExecutor(max_workers=1, thread_name_prefix="kokoro-mlx")
 
 # MLX keeps freed GPU buffers to reuse them, by default up to most of the
 # Mac's memory. Every piece of speech has a different length, so none fit
-# the next one exactly: the cache grew to 7 GB in ten sentences and the mini
-# started swapping (Whisper 5 s instead of 0.9 s). Capped, pieces are as
+# the next one exactly: the cache grew to 7 GB in ten sentences and a 16 GB
+# Mac started swapping (Whisper 5 s instead of 0.9 s). Capped, pieces are as
 # fast and steadier. Process-wide: Whisper's buffers count too.
 CACHE_LIMIT = 256 * 1024**2
 

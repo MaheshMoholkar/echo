@@ -11,8 +11,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     """Everything comes from environment variables.
 
-    `.env.lab` is written by `lab up` (homelab services); `.env` holds local
-    overrides. Real environment variables win over both.
+    `.env` at the repo root (see `.env.example`); `.env.lab`, if present, is
+    written by the author's homelab tool and loaded first. Real environment
+    variables win over both.
     """
 
     model_config = SettingsConfigDict(
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
 
     database_url: str
 
-    # Ollama's OpenAI-compatible API (native on the mini, see the homelab skill).
+    # Ollama's OpenAI-compatible API.
     ollama_base_url: str = "http://localhost:11434/v1"
     chat_model: str = "qwen3.5:4b"
     embedding_model: str = "nomic-embed-text"

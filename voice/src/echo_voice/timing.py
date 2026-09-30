@@ -74,8 +74,8 @@ class ShortOpeningAggregator(SimpleTextAggregator):
     """Cuts the model's reply into pieces for Kokoro: whole sentences, except
     at the start of a reply, where it also cuts at commas.
 
-    Kokoro turns a whole piece into audio before any of it plays (on the
-    mini's GPU, ~0.1 s plus ~0.07 s per second of speech, about twice that
+    Kokoro turns a whole piece into audio before any of it plays (on an
+    M4's GPU, ~0.1 s plus ~0.07 s per second of speech, about twice that
     while the model is still writing). So the first piece's length is part
     of the caller's wait ("International orders take seven to fourteen
     business days," rather than the whole 20-word sentence), and each next

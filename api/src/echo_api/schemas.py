@@ -74,7 +74,7 @@ class DocumentOut(BaseModel):
     created_at: datetime
 
 
-# --- the operator inbox (milestone 5) -----------------------------------------------
+# --- the operator inbox ----------------------------------------------------------
 
 
 class ContactOut(BaseModel):

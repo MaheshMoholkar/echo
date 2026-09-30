@@ -1,285 +1,168 @@
 # Echo
 
-AI customer support you can embed on any site: a chat and voice widget answered
-by an AI agent that searches the business's knowledge base and hands off to a
-human operator. A local-only rewrite of a Next.js + Convex + Clerk + Vapi +
-OpenAI template (kept in `ref/`, gitignored): everything runs on the Mac mini.
+AI customer support you can embed on a website: a chat and voice widget,
+answered by an AI agent that searches the business's knowledge base and hands
+off to a human operator when needed. Everything runs locally on one Mac: no
+cloud APIs, no API keys.
+
+A local-only rebuild of a Next.js + Convex + Clerk + Vapi + OpenAI SaaS
+template:
 
 | Part | What | Replaces |
 |---|---|---|
-| `web/` | Next.js 16 + shadcn/ui: dashboard and `/widget` route | two Next.js apps |
-| `api/` | FastAPI (Python 3.13, uv), PydanticAI agents | Convex |
-| Postgres + pgvector | from the homelab (`lab.yml`) | Convex DB + vector search |
-| Ollama (native) | `qwen3.5:4b` chat/tools, `nomic-embed-text` embeddings | OpenAI |
-| Better Auth | login + organizations in Next.js, JWT verified by FastAPI | Clerk |
-| `voice/` | Pipecat: MLX Whisper, Kokoro, Silero VAD, Smart Turn v3 | Vapi |
+| `web/` | Next.js 16 + shadcn/ui: the dashboard and the `/widget` page | two Next.js apps |
+| `api/` | FastAPI (Python 3.13), PydanticAI agents, SQLAlchemy | Convex |
+| Postgres + pgvector | data and vector search | Convex DB + vector search |
+| Ollama | `qwen3.5:4b` replies, `nomic-embed-text` search, `glm-ocr` OCR | OpenAI |
+| Better Auth | accounts and organizations in Next.js; FastAPI checks its JWTs | Clerk |
+| `voice/` | Pipecat: Silero VAD, Smart Turn v3, Whisper and Kokoro on MLX | Vapi |
 
-![Architecture: browser, Next.js, FastAPI, the Pipecat voice bot and the homelab](docs/architecture.png)
+![Architecture: the browser, Next.js, FastAPI, the Pipecat voice bot, Postgres and Ollama](docs/architecture.png)
 
-## Run it
+## Features
 
-Needs the homelab on the mini (`lab`, Ollama with both models, uv, pnpm).
+- **Widget** for customers: chat with streamed replies, or a voice call with
+  live captions; grounded in the knowledge base; asks for a person on request.
+- **Knowledge base**: upload PDF, Word, Markdown, text, HTML, and scanned
+  PDFs or images (OCR); searched on every question.
+- **Inbox** for operators: every conversation (chats and call transcripts),
+  take over from the AI, hand back, resolve, and an "Enhance" rewrite of a
+  reply draft.
+- **Organizations**: each business has its own knowledge base, conversations
+  and widget.
+
+## Requirements
+
+- A Mac with Apple Silicon (the voice bot runs Whisper and Kokoro on the GPU
+  with MLX) and ~16 GB of memory
+- Python 3.13 with [uv](https://docs.astral.sh/uv/), Node.js 22+ with pnpm, `psql`
+- Postgres 17 with pgvector, for example:
+
+  ```bash
+  docker run -d --name echo-db -p 5432:5432 -e POSTGRES_USER=echo \
+    -e POSTGRES_PASSWORD=echo -e POSTGRES_DB=echo pgvector/pgvector:pg17
+  ```
+
+- [Ollama](https://ollama.com) with the models:
+
+  ```bash
+  ollama pull qwen3.5:4b && ollama pull nomic-embed-text
+  ollama pull glm-ocr:q8_0   # optional: scanned PDFs and images
+  ```
+
+## Getting started
 
 ```bash
-make setup   # lab up (.env.lab), uv sync, pnpm install, auth + app tables
-make dev     # web on :3000, api on :8000, voice bot on :8001
-make migrate # after pulling new Alembic migrations
+cp .env.example .env   # set BETTER_AUTH_SECRET: openssl rand -base64 32
+make setup             # dependencies, database tables, voice models (~800 MB)
+make dev               # web :3000, api :8000, voice bot :8001
+make seed              # in another terminal: demo login + sample knowledge base
 ```
 
-`make setup` expects a root `.env` (gitignored) with local secrets:
-`BETTER_AUTH_SECRET` (`openssl rand -base64 32`) and
-`BETTER_AUTH_URL=http://localhost:3000`.
+Open http://localhost:3000 and sign in as `demo@example.com` /
+`echo-demo-password`. The dashboard links to the organization's widget. Use
+`localhost` (or HTTPS): browsers only allow the microphone there.
 
-From the laptop: `ssh -L 3000:localhost:3000 mini`, then open
-http://localhost:3000 (localhost keeps the microphone allowed for voice later).
-The browser only talks to Next.js; `/api/v1/*` is proxied to FastAPI.
+| Command | |
+|---|---|
+| `make test` | API and voice tests (a real Postgres; the models are faked) |
+| `make check` | ruff, ESLint, TypeScript |
+| `make migrate` | apply new database migrations |
+| `make eval ORG=<id>` | does the chat stay grounded? (real model) |
+| `make voice-eval ORG=<id>` | voice answers vs knowledge-base passages |
+| `make voice-latency ORG=<id>` | a scripted voice call, timed as the caller hears it |
 
-```bash
-make test    # API tests against lab Postgres (rolled back); LLM and embeddings faked
-make check   # ruff, formatting, ESLint, TypeScript
-make smoke   # PydanticAI -> Ollama tool call, prints every message
-make eval ORG=<org id> RUNS=2   # grounding eval with the real model (see below)
+`make seed` prints the demo organization's id for the last three.
+
+## How it works
+
+### Chat
+
+- Widget visitors have no account: a name and email give them a **contact
+  session** (`api/src/echo_api/contacts.py`), sent as `X-Contact-Session`.
+  They only ever see their own conversations.
+- Replies stream as **Server-Sent Events**. Next.js proxies `/api/v1` to
+  FastAPI and would gzip (and so buffer) the stream, hence
+  `Cache-Control: no-transform`.
+- **The agent** (`agent.py`) searches the knowledge base *before* every reply
+  and puts the results after the question, with a reminder to answer only
+  from them. A 4B model given a search *tool* skipped it and made answers up.
+  Its tools escalate (only when the customer asks for a person) or resolve
+  the conversation.
+- The prompt keeps a fixed start (instructions, history) so Ollama can reuse
+  its cache, and thinking is turned off: seconds of hidden reasoning per
+  reply otherwise.
+
+### Knowledge base
+
+- `markitdown` turns a file into Markdown. Scans and images go through
+  GLM-OCR (`ocr.py`), which repeats itself endlessly: the output is streamed
+  and cut at the first repeated paragraph.
+- Chunks follow the document's sections (~1,000 characters, each starting
+  with its heading trail), embedded with `nomic-embed-text` into pgvector
+  (HNSW index). Search stays within the organization and drops anything past
+  cosine distance 0.45.
+
+### Operator inbox
+
+- Keyset pagination on `(updated_at, id)`; the inbox, open threads and the
+  widget poll for changes.
+- An operator's reply takes the conversation over and the AI goes quiet.
+- "Enhance" is a second agent whose output validator rejects rewrites that
+  add numbers or currency symbols (the model turned "499" into "$499").
+
+### Voice
+
+The widget calls the Pipecat bot in `voice/` over WebRTC; only the call setup
+goes through Next.js.
+
+```
+mic → Silero VAD + Smart Turn v3 → Whisper (MLX) → knowledge search
+    → qwen3.5:4b (Ollama) → Kokoro (MLX) → speaker
 ```
 
-The widget for an organization is at `/widget?organizationId=<org id>`; the
-dashboard's "Your widget" card links to it and shows the iframe snippet.
+- Replies start ~3–4.5 s after the caller stops. `make voice-latency` breaks
+  each wait down:
 
-## How chat works
+  ```
+  WAIT 3.52 s = turn end 1.09 + search 0.03 + first token 1.35
+                + chunk written 0.32 + Kokoro + audio 0.74
+  ```
 
-1. **Contact sessions** (`api/src/echo_api/contacts.py`): widget visitors
-   have no account. Name + email → a session id (random UUID, 24 h, extended
-   while in use), sent as `X-Contact-Session`. Every route checks it, and a
-   visitor only ever sees their own conversations (others' read as 404).
-2. **Streaming** (`routers/public.py`): `POST …/conversations/{id}/messages`
-   answers with Server-Sent Events: `message` (saved), `tool`, `delta`
-   (reply tokens as generated), `error`, `status`. The widget reads them from
-   `fetch` (`web/lib/widget-api.ts`); `EventSource` can't POST or send headers.
-3. **The agent** (`agent.py`): a PydanticAI agent on Ollama with two tools,
-   `escalate_conversation` (only when the customer asks for a person or
-   accepts the offer) and `resolve_conversation`, which change the
-   conversation's status. Escalated: the AI stays quiet and the widget polls
-   for a human's reply. Resolved: no new messages (409).
-4. **Prompt layout for Ollama's cache**: instructions and tools first and
-   never changing, then the history rebuilt identically each turn, then the
-   new message with its search results. Only the end is new, so turns after
-   the first skip most of the prefill. Answers with search results take
-   ~3–6 s on the mini; small talk ~1–2 s.
-5. **Gotcha**: Next.js gzips proxied responses, and gzip buffers a stream
-   until it has enough bytes, so replies arrived in one lump. The SSE route
-   sends `Cache-Control: no-transform`, set in a dependency because a
-   streaming function's body runs after the headers are sent. A test guards it.
+- While the greeting plays, the bot loads the models and has Ollama read the
+  instructions, so the first question only costs its own tokens.
+- A turn ends once *every* part of it is transcribed ("Sorry, one more
+  thing. When is…" is two stretches of speech).
+- Kokoro speaks a whole piece of text at a time, so the start of a reply is
+  cut at commas. It runs on the GPU through mlx-audio with espeak phonemes;
+  MLX's buffer cache is capped at 256 MB (uncapped, it reached 7 GB).
+- Word timings are estimated from each word's phonemes: the widget shows
+  live captions, and an interrupted answer is saved up to the words heard.
+- Two knowledge-base passages per spoken answer (four in chat): each one is
+  ~0.26 s of reading before the first word, with no loss in `make voice-eval`.
 
-## How the knowledge base works
+### Auth
 
-1. **Upload** (dashboard → Knowledge base, `routers/files.py`): PDF, Word,
-   Markdown, text or HTML up to 10 MB. The same bytes twice are refused (409);
-   the same *name* again replaces the old version once the new one is ready.
-2. **Ingest** (`ingest.py`, in the background): `markitdown` → Markdown;
-   `chunking.chunk_markdown` → one or more chunks per section (~1,000
-   characters, 150 overlap), each starting with its heading trail
-   ("Help Center > Returns"); `nomic-embed-text` → 768 numbers per chunk
-   (with its `search_document:` / `search_query:` prefixes); stored in
-   `chunks.embedding` with an HNSW index. Only the extracted text is kept.
-3. **Search** (`knowledge.py`): the question is embedded, the nearest chunks
-   *of this organization* come back (pgvector iterative scan keeps the tenant
-   filter exact), and anything further than cosine distance 0.45 is dropped.
-4. **Answer** (`agent.py`): every customer message is searched *before* the
-   model runs, and the results go at the end of the prompt, after the
-   message, in `<knowledge_base>` with a reminder to answer only from them.
+- Better Auth (`web/lib/auth.ts`) runs in Next.js, with its tables in the
+  `auth` schema. For API calls the browser gets a 15-minute JWT (Ed25519)
+  carrying the user and the active organization.
+- FastAPI (`api/src/echo_api/auth.py`) verifies it against Better Auth's
+  public keys (algorithm pinned, issuer, audience, expiry), and every query
+  is filtered by the organization.
 
-What we measured on the way (`docs/sample-knowledge-base/`, `make eval`):
+## Project layout
 
-- **Chunk by section.** Size-only chunking packed a 5-section help center
-  into 2 mixed chunks; "customs?" matched the returns chunk, and answerable
-  vs unanswerable questions overlapped in distance (0.29–0.44 vs 0.42–0.51).
-  One chunk per section: answerable 0.26–0.34.
-- **Distance can't judge relevance alone.** Answerable questions still reach
-  0.44 and unanswerable ones start at 0.41, so 0.45 is a noise floor and the
-  model makes the final call.
-- **Don't let a 4B model decide whether to search.** With a search *tool*,
-  it skipped searching for "Do you have a mobile app?" and invented "Yes,
-  iOS and Android". Searching every message (pipeline RAG) fixes that and is
-  one model call per turn instead of two.
-- **Repeat the rule next to the results.** Eval, 2 runs × 12 questions:
-  instructions only → answerable 11/12, invented 5/12; with the note after
-  every result block → 12/12, invented 2–3/12 flagged, of which about one is
-  a real invention (the rest are honest answers the rough rules flag).
-  Temperature 0.2 made no measurable difference.
-- **What's left:** partial context. "Student discount?" retrieves the
-  pricing section, which doesn't mention one, and the model sometimes fills
-  the gap. Next levers: a bigger model, hybrid (keyword + vector) search, a
-  relevance check, and an eval judged by a stronger model.
+```
+web/     Next.js: dashboard, widget, Better Auth
+api/     FastAPI: widget API, agents, knowledge base, inbox (echo_api)
+voice/   Pipecat voice bot; reuses echo_api for search and the database
+docs/    architecture diagram, sample knowledge base (used by make seed)
+```
 
-## How the operator inbox works
+## Notes
 
-1. **Inbox** (dashboard → Conversations, `routers/inbox.py`): an
-   organization's conversations, newest activity first, filterable by
-   status, with the visitor's name, email and browser details. Pages use a
-   **keyset cursor**, `(updated_at, id)` of the last row: the next page is
-   "everything older", so it stays fast deep into the list and rows don't
-   repeat or vanish while new messages reorder the top.
-2. **Takeover**: an operator's reply on a conversation the AI is handling
-   makes it `escalated`, and the AI stops answering. "Hand back to AI" sets
-   it to `unresolved` again; "Resolve" closes it (no new messages from either
-   side, 409).
-3. **Enhance** (`assist.py`): a second, separate agent rewrites the
-   operator's draft clearly and politely. The prompt alone let "499" become
-   "$499" in half the samples, so an **output validator** rejects rewrites
-   that add a currency symbol or a number, and PydanticAI sends the reason
-   back to the model for another try (0 of 8 after the fix). It can't catch
-   changes of meaning ("50+" became "over 50" once): the operator reviews
-   the text before sending.
-4. **Updates are polled**: the inbox list every 5 s, an open thread every
-   3 s, the widget every 4 s while a chat is open. The widget has to poll
-   even when it thinks the AI is answering: a takeover happens on the
-   server, and the end-to-end test caught the widget missing the operator's
-   reply. The next step up is pushing changes instead (Postgres
-   LISTEN/NOTIFY → SSE), worth it once polling load matters.
-5. `now()` in Postgres is the start of the *transaction*, so rows written in
-   one transaction shared a timestamp and sorted arbitrarily; timestamps use
-   `clock_timestamp()` instead.
-
-## How OCR works
-
-Scanned PDFs and images (PNG, JPG, WebP) are read with **GLM-OCR**
-(`glm-ocr:q8_0`, 0.9B, 1.6 GB) on Ollama (`api/src/echo_api/ocr.py`).
-
-- A PDF is read as text first; under 40 characters per page means a scan,
-  so its pages are rendered (pypdfium2) and sent to OCR, up to 25 pages.
-- Blank margins are cropped first: an uncropped, mostly empty page came back
-  out of order (the title last).
-- GLM-OCR doesn't stop: it reads the page, then starts over until it runs
-  out of tokens (50 s for one page). The output is streamed, and as soon as
-  two consecutive paragraphs repeat, the first pass is kept and the request
-  is dropped, which stops Ollama. One page: ~1-3 s.
-- The model stays loaded 30 s after a document (`keep_alive`), then unloads.
-  With the lab's limit of two loaded models, a chat right after an upload
-  can wait while models swap (8 s once, then 4 s).
-- `docs/sample-knowledge-base/acme-holiday-notice-scan.pdf` is an image-only
-  PDF for trying it; tests fake the OCR model.
-
-## How voice works
-
-The widget's "Talk to us" starts a call with the local bot in `voice/`
-(Pipecat 1.12). Only the WebRTC setup goes through Next.js (`/api/voice/offer`,
-contact session checked like the chat); audio flows browser ⇄ bot directly.
-
-    mic → WebRTC → Silero VAD + Smart Turn v3 → MLX Whisper (large-v3-turbo q4)
-        → knowledge search (same pipeline RAG as the chat) → Ollama qwen3.5:4b
-        → Kokoro (MLX, on the GPU) → WebRTC → speaker
-
-- Each call saves its transcript to the conversation, so the team sees voice
-  calls in the inbox; "Continue in chat" carries on in the same thread.
-- Barge-in works: talking over the bot stops it and it answers the new
-  question. A conversation the team has taken over refuses calls (409).
-- The widget shows the bot's words as they are spoken, like live captions,
-  and an interrupted answer is saved up to the word the caller cut in at
-  ("Your warranty covers the device for two years"). Kokoro doesn't report
-  word timings, so `echo_voice.kokoro_mlx` estimates them: each piece's
-  speech shared out by each word's phoneme count, good to a word or so.
-  Pipecat then releases the reply word by word in step with the audio.
-- `make voice-models` fetches Kokoro (312 MB of MLX weights + the voices)
-  and Whisper (~460 MB); the server loads both at startup (Whisper's first
-  transcription went from 3.7 s to 0.86 s).
-
-### Where a voice reply's wait goes
-
-`make voice-latency ORG=<id> [COLD=1]` (with `make dev` running) makes a
-scripted call: a Python WebRTC client speaks questions (Kokoro, another
-voice), cuts in on the last answer, and times each wait from the moment it
-stops talking to the first reply audio. It gets the bot's own events over
-the RTVI data channel, as the widget does, so every wait is broken down:
-
-    WAIT  3.52 s = turn end 1.09 + search 0.03 + first token 1.35
-                   + chunk written 0.32 + Kokoro + audio 0.74
-
-- **Turn end ~1 s**: VAD waits 0.2 s of silence, then Smart Turn v3 judges
-  the turn complete and Whisper transcribes it (~0.85 s).
-- **First token ~1.5 s**: the model reads the ~700-token prompt. The
-  instructions and history are cached by Ollama; the ~450 new tokens are
-  mostly the knowledge-base passages.
-- **Chunk written ~0.3 s**: the model writes the first piece of the reply.
-- **Kokoro ~0.7 s**: it turns a whole piece of text into audio before
-  playing any of it (~0.1 s + ~0.07 s per second of speech on the GPU,
-  about twice that while the model is still writing). So the reply is cut
-  into short pieces at the start (`echo_voice.timing`): at commas until
-  ~40 characters are queued, whole sentences after that.
-
-What changed the numbers (all waits after the caller stops):
-
-| | before | after |
-|---|---|---|
-| First question, model unloaded | 12.2 s | 3.7 s |
-| Later questions | 4.5-7.2 s | 3.5-3.8 s |
-| A question spoken in two parts while the bot talks | 9.0 s | 4.0 s |
-| Longest pause inside a reply | up to 2 s | 0.5 s |
-
-- **Warm-up during the greeting** (`warm_up_call`): loads the chat and
-  embedding models if Ollama unloaded them, and has the model read the
-  instructions + history, so the first question costs only its own tokens.
-- **Every part of a turn is transcribed before it ends**
-  (`SmartTurnWithAllTranscripts`): "Sorry, one more thing. When is…" is two
-  stretches of speech. The first one's transcript arrived after the caller
-  had started the second, and Pipecat ended the turn without the second:
-  the model answered "sorry one more thing", then got interrupted.
-- **Short first pieces** (`ShortOpeningAggregator`), above.
-- **Kokoro on the GPU** (`echo_voice.kokoro_mlx`): the same model and
-  voices through mlx-audio, 3-6x faster than ONNX on the CPU ("Sure." 0.56 s
-  → 0.11 s, an 11-word sentence 1.7 s → 0.5 s, with the LLM busy). Its
-  phonemes still come from kokoro-onnx's espeak (mlx-audio's own would pull
-  in spaCy), and the ~0.35 s of silence it pads each piece with is trimmed.
-  MLX keeps freed GPU buffers for reuse, by default without a practical
-  limit: after ten sentences it held 7 GB and the mini was swapping (one
-  answer took 24 s). The voice server caps that cache at 256 MB.
-- The prompt no longer asks for an opener ("Sure."): that was a workaround
-  for slow Kokoro, and made every reply sound the same.
-
-- **Two knowledge-base passages per spoken answer**, not four
-  (`PASSAGES` in `echo_voice.bot`). The model reads each passage (~100
-  tokens) before its first word, ~0.26 s apiece. `make voice-eval ORG=<id>`
-  asks the grounding questions with 0-4 passages: with 1-4 it got all 18
-  answerable ones right and admitted what it didn't know about as often, so
-  more passages bought nothing here. Replaying five-turn calls, the first
-  token came after ~1.25 s on average with two passages, ~1.8 s with four.
-
-Left: Whisper (~0.85 s) is now the biggest fixed cost. Some turns take ~2 s
-to the first token either way: Ollama re-reads the whole conversation
-instead of reusing what it has cached, and it isn't clear yet when.
-
-## How auth works
-
-1. **Better Auth** (`web/lib/auth.ts`) runs inside Next.js: sign-up/in,
-   the session cookie, organizations. Its tables live in the `auth` schema
-   (`make auth-migrate`); app tables live in `public` (Alembic, `make migrate`).
-2. For API calls the browser gets a **15-minute JWT** from
-   `/api/auth/token` (`web/lib/api.ts`), signed with an Ed25519 key. Claims:
-   `sub` (user), `orgId` (active organization), `aud=echo-api`, `iss`, `exp`.
-3. **FastAPI** (`api/src/echo_api/auth.py`) verifies it with the public keys
-   from `/api/auth/jwks`, cached: signature (algorithm pinned to EdDSA),
-   issuer, audience, expiry. `OrgUser` routes also require an `orgId`, and
-   every tenant query filters by it. `api/tests/test_auth.py` has one test
-   per way a bad token could get through.
-4. `web/proxy.ts` only checks that a session cookie exists (fast redirect);
-   the dashboard layout validates the session and active org on the server.
-
-Switching organization changes the `orgId` claim, so the cached API token is
-dropped (`clearApiToken`). Revocation is bounded by the 15-minute expiry: a
-removed member keeps API access until their token runs out.
-
-## Version notes
-
-- Python 3.13, not 3.14: `kokoro-onnx` (voice TTS) doesn't support 3.14 yet.
-- TypeScript 6.0 and ESLint 9, not 7 and 10: typescript-eslint and
-  eslint-plugin-react don't support them yet. TS 7 itself builds this app.
-- Thinking off for qwen3.5: PydanticAI's `thinking=False` is ignored by
-  Ollama; `openai_reasoning_effort="none"` works (1.8 s vs 5.8 s per reply).
-
-## Milestones
-
-1. ✅ Scaffold: web + api + lab Postgres + Ollama, health check end to end
-2. ✅ Auth and organizations: Better Auth, JWT → FastAPI via JWKS
-3. ✅ Text chat: widget sessions, SSE streaming, agent tools (escalate, resolve)
-4. ✅ Knowledge base: upload → parse → chunk → embed → pgvector search → grounded answers
-5. ✅ Operator inbox: filters, cursor pages, replies, takeover and hand-back, Enhance
-4b. ✅ OCR for scanned PDFs and images (GLM-OCR via Ollama)
-6. ✅ Voice: calls, grounded answers, barge-in, transcripts in the inbox; replies start ~3-4.5 s after the caller stops, with live captions (`make voice-latency`)
+- Not included: widget customization, an embed script for other sites,
+  pushed (instead of polled) updates, billing.
+- Python 3.13 (not 3.14) for the voice dependencies; TypeScript 6 and ESLint 9
+  because typescript-eslint and eslint-plugin-react don't support 7 and 10 yet.
+- `lab.yml` is for the author's homelab tooling; `.env` is all you need.

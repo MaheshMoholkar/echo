@@ -5,7 +5,7 @@ documents from `docs/sample-knowledge-base/` uploaded.
 
 The same questions as the text chat's grounding eval (api/scripts/
 eval_grounding.py), asked with the voice prompt and 0-4 passages. Before
-its first word the model reads the passages: ~0.26 s each on the mini, the
+its first word the model reads the passages: ~0.26 s each on an M4 Mac mini, the
 biggest part of the wait it controls. Fewer passages: a shorter wait, but a
 better chance the answer isn't among them. Per count, it prints:
 
