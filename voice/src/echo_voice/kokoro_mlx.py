@@ -23,7 +23,14 @@ from kokoro_onnx.chunker import split_phonemes
 from kokoro_onnx.tokenizer import Tokenizer
 from mlx_audio.tts.utils import load_model
 from pipecat.audio.utils import create_stream_resampler
-from pipecat.frames.frames import ErrorFrame, Frame, TTSAudioRawFrame
+from pipecat.frames.frames import (
+    ErrorFrame,
+    Frame,
+    InterruptionFrame,
+    TTSAudioRawFrame,
+    TTSStoppedFrame,
+)
+from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.kokoro.tts import KokoroTTSService, language_to_kokoro_language
 from pipecat.services.tts_service import TTSService
 from pipecat.transcriptions.language import Language
@@ -89,8 +96,36 @@ def synthesize(text: str, pack: np.ndarray, speed: float = 1.0) -> np.ndarray:
     return np.concatenate(pieces) if pieces else np.zeros(0, dtype=np.float32)
 
 
+def word_starts(text: str, audio: np.ndarray) -> list[tuple[str, float]]:
+    """When each word of `text` starts in its (trimmed) audio, roughly: the
+    speech between the kept silences, shared out by each word's phoneme
+    count ("1,499" is five spoken words, "a" one sound). Good to a word or
+    so, which is what the transcript and live captions need; an exact map
+    from Kokoro's phoneme durations breaks on numbers and merged words."""
+    words = text.split()
+    weights = [max(1, len(tokenizer().phonemize(w, "en-us"))) for w in words]
+    speech = max(0.0, len(audio) / SAMPLE_RATE - KEEP_BEFORE - KEEP_AFTER)
+    starts, at = [], KEEP_BEFORE
+    for word, weight in zip(words, weights, strict=True):
+        starts.append((word, at))
+        at += speech * weight / sum(weights)
+    return starts
+
+
+def speak(text: str, pack: np.ndarray, speed: float) -> tuple[np.ndarray, list]:
+    audio = synthesize(text, pack, speed)
+    return audio, word_starts(text, audio)
+
+
 class KokoroMLXTTSService(TTSService):
-    """Pipecat's Kokoro service with the synthesis done by `synthesize`."""
+    """Pipecat's Kokoro service with the synthesis done by `synthesize`.
+
+    It also says when each word is heard (`word_starts`), so Pipecat
+    releases the reply word by word as it plays: the widget shows live
+    captions, and when the caller cuts in, the transcript keeps exactly the
+    words they heard. Without word times a piece only counted once fully
+    spoken, so an answer interrupted in its first sentence left no trace.
+    """
 
     Settings = KokoroTTSService.Settings
 
@@ -100,10 +135,24 @@ class KokoroMLXTTSService(TTSService):
         )
         defaults.apply_update(settings)
         super().__init__(
-            push_start_frame=True, push_stop_frames=True, settings=defaults, **kwargs
+            push_start_frame=True,
+            push_stop_frames=True,
+            push_text_frames=False,  # words come from add_word_timestamps
+            settings=defaults,
+            **kwargs,
         )
         self._voices_path = voices_path
         self._resampler = create_stream_resampler()
+        # Word times count from the start of the reply's audio, which spans
+        # all its pieces: where the next piece starts.
+        self._offset = 0.0
+
+    async def push_frame(
+        self, frame: Frame, direction: FrameDirection = FrameDirection.DOWNSTREAM
+    ) -> None:
+        await super().push_frame(frame, direction)
+        if isinstance(frame, (InterruptionFrame, TTSStoppedFrame)):
+            self._offset = 0.0  # the next reply starts from zero
 
     def can_generate_metrics(self) -> bool:
         return True
@@ -115,8 +164,8 @@ class KokoroMLXTTSService(TTSService):
         try:
             await self.start_tts_usage_metrics(text)
             pack = voice_pack(self._voices_path, self._settings.voice)
-            audio = await asyncio.get_running_loop().run_in_executor(
-                mlx_thread, synthesize, text, pack, self._settings.speed
+            audio, words = await asyncio.get_running_loop().run_in_executor(
+                mlx_thread, speak, text, pack, self._settings.speed
             )
             await self.stop_ttfb_metrics()
             pcm = (audio * 32767).astype(np.int16).tobytes()
@@ -128,6 +177,10 @@ class KokoroMLXTTSService(TTSService):
                 num_channels=1,
                 context_id=context_id,
             )
+            await self.add_word_timestamps(
+                [(word, self._offset + at) for word, at in words], context_id
+            )
+            self._offset += len(audio) / SAMPLE_RATE
         except Exception as exc:  # noqa: BLE001 - reported to the pipeline
             yield ErrorFrame(error=f"Kokoro (MLX) failed: {exc}")
         finally:

@@ -55,6 +55,14 @@ KOKORO_VOICE = "af_heart"
 
 WHISPER_MODEL = MLXModel.LARGE_V3_TURBO_Q4  # ~460 MB, close to large-v3 accuracy
 
+# Knowledge-base passages per spoken answer (the text chat gets up to 4). The
+# model reads each (~100 tokens) before its first word, ~0.26 s apiece; with
+# 1-4 passages it answered all 18 answerable questions of `make voice-eval`
+# and admitted what it didn't know equally often, and a spoken answer is one
+# or two sentences anyway. 1 would be faster still, but that eval has no
+# two-part questions to show what it would miss.
+PASSAGES = 2
+
 
 def warm_up() -> None:
     """Load Whisper and Kokoro before the first call. Both load their model on
@@ -154,7 +162,10 @@ class KnowledgeRetriever(FrameProcessor):
         earlier = [messages[i]["content"] for i in users[:-1]]
         async with SessionLocal() as db:
             hits = await knowledge.search(
-                db, self._organization_id, agent.retrieval_query(earlier, said)
+                db,
+                self._organization_id,
+                agent.retrieval_query(earlier, said),
+                limit=PASSAGES,
             )
         messages[last] = {
             "role": "user",

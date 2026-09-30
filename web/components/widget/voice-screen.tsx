@@ -29,7 +29,8 @@ import { Button } from "@/components/ui/button"
 import { BackHeader } from "@/components/widget/screens"
 import { cn } from "@/lib/utils"
 
-type Line = { role: "user" | "bot"; text: string }
+// speaking: the words heard so far of the piece the bot is saying.
+type Line = { role: "user" | "bot"; text: string; speaking?: string }
 type CallState = "idle" | "connecting" | "live" | "ended" | "failed"
 
 /**
@@ -103,22 +104,26 @@ function VoiceCall({
     if (data.final && data.text.trim())
       setLines((all) => [...all, { role: "user", text: data.text.trim() }])
   })
-  // The bot's reply arrives sentence by sentence: one line per turn. Each
-  // sentence is announced twice, when its text is ready ("new") and once it
-  // has been spoken ("completed"); showing only the second keeps the
-  // transcript free of duplicates and in step with what was actually said
-  // (a sentence cut off by an interruption never shows up).
+  // The bot's reply arrives piece by piece (a clause or a sentence), and each
+  // piece word by word as it is heard: "in-progress" with the words so far,
+  // then "completed". One line per turn: the finished pieces plus the words
+  // heard of the one being spoken, like live captions. When the caller cuts
+  // in, the line keeps exactly what they heard.
   useRTVIClientEvent(RTVIEvent.BotOutput, (data: BotOutputData) => {
-    const text = data.text.trim()
-    if (!text || data.spoken_status !== "completed") return
+    const status = data.spoken_status
+    if (status !== "in-progress" && status !== "completed") return
+    const heard = (data.spoken_progress?.accumulated_text ?? data.text).trim()
+    if (!heard) return
     setLines((all) => {
       const last = all.at(-1)
-      if (last?.role === "bot")
-        return [
-          ...all.slice(0, -1),
-          { role: "bot", text: `${last.text} ${text}` },
-        ]
-      return [...all, { role: "bot", text }]
+      const done = last?.role === "bot" ? last.text : ""
+      const line: Line =
+        status === "completed"
+          ? { role: "bot", text: `${done} ${heard}`.trim() }
+          : { role: "bot", text: done, speaking: heard }
+      return last?.role === "bot"
+        ? [...all.slice(0, -1), line]
+        : [...all, line]
     })
   })
 
@@ -205,7 +210,7 @@ function VoiceCall({
                 : "self-start border bg-background"
             )}
           >
-            {line.text}
+            {[line.text, line.speaking].filter(Boolean).join(" ")}
           </p>
         ))}
       </div>

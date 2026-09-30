@@ -14,6 +14,8 @@ OpenAI template (kept in `ref/`, gitignored): everything runs on the Mac mini.
 | Better Auth | login + organizations in Next.js, JWT verified by FastAPI | Clerk |
 | `voice/` | Pipecat: MLX Whisper, Kokoro, Silero VAD, Smart Turn v3 | Vapi |
 
+![Architecture: browser, Next.js, FastAPI, the Pipecat voice bot and the homelab](docs/architecture.png)
+
 ## Run it
 
 Needs the homelab on the mini (`lab`, Ollama with both models, uv, pnpm).
@@ -170,6 +172,12 @@ contact session checked like the chat); audio flows browser ⇄ bot directly.
   calls in the inbox; "Continue in chat" carries on in the same thread.
 - Barge-in works: talking over the bot stops it and it answers the new
   question. A conversation the team has taken over refuses calls (409).
+- The widget shows the bot's words as they are spoken, like live captions,
+  and an interrupted answer is saved up to the word the caller cut in at
+  ("Your warranty covers the device for two years"). Kokoro doesn't report
+  word timings, so `echo_voice.kokoro_mlx` estimates them: each piece's
+  speech shared out by each word's phoneme count, good to a word or so.
+  Pipecat then releases the reply word by word in step with the audio.
 - `make voice-models` fetches Kokoro (312 MB of MLX weights + the voices)
   and Whisper (~460 MB); the server loads both at startup (Whisper's first
   transcription went from 3.7 s to 0.86 s).
@@ -226,12 +234,17 @@ What changed the numbers (all waits after the caller stops):
 - The prompt no longer asks for an opener ("Sure."): that was a workaround
   for slow Kokoro, and made every reply sound the same.
 
-Left: most of the wait is now Whisper (~0.85 s) and the model reading the
-knowledge-base passages (~1.5 s; fewer or shorter passages would help). A
-sentence cut off by barge-in isn't saved: the transcript only has what was
-fully spoken, so an answer interrupted in its first sentence leaves no bot
-line. Per-word timings (Kokoro knows each phoneme's duration) would let
-Pipecat keep exactly the words that were heard.
+- **Two knowledge-base passages per spoken answer**, not four
+  (`PASSAGES` in `echo_voice.bot`). The model reads each passage (~100
+  tokens) before its first word, ~0.26 s apiece. `make voice-eval ORG=<id>`
+  asks the grounding questions with 0-4 passages: with 1-4 it got all 18
+  answerable ones right and admitted what it didn't know about as often, so
+  more passages bought nothing here. Replaying five-turn calls, the first
+  token came after ~1.25 s on average with two passages, ~1.8 s with four.
+
+Left: Whisper (~0.85 s) is now the biggest fixed cost. Some turns take ~2 s
+to the first token either way: Ollama re-reads the whole conversation
+instead of reusing what it has cached, and it isn't clear yet when.
 
 ## How auth works
 
@@ -269,4 +282,4 @@ removed member keeps API access until their token runs out.
 4. ✅ Knowledge base: upload → parse → chunk → embed → pgvector search → grounded answers
 5. ✅ Operator inbox: filters, cursor pages, replies, takeover and hand-back, Enhance
 4b. ✅ OCR for scanned PDFs and images (GLM-OCR via Ollama)
-6. ✅ Voice: calls, grounded answers, barge-in, transcripts in the inbox; replies start ~3.5 s after the caller stops (`make voice-latency`)
+6. ✅ Voice: calls, grounded answers, barge-in, transcripts in the inbox; replies start ~3-4.5 s after the caller stops, with live captions (`make voice-latency`)

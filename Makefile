@@ -8,7 +8,7 @@ LOAD_ENV := set -a; . ../.env.lab; [ -f ../.env ] && . ../.env; set +a;
 KOKORO_DIR := $(HOME)/.cache/pipecat/kokoro-onnx
 KOKORO_RELEASE := https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
 
-.PHONY: setup migrate auth-migrate voice-models dev web api voice test check smoke eval voice-latency
+.PHONY: setup migrate auth-migrate voice-models dev web api voice test check smoke eval voice-eval voice-latency
 
 setup:            ## start lab services, install deps, create tables, fetch voice models
 	lab up
@@ -55,6 +55,9 @@ smoke:            ## PydanticAI -> Ollama tool-calling round trip, prints every 
 
 eval:             ## grounding eval with the real model: make eval ORG=<organization id> [RUNS=2]
 	cd api && uv run python scripts/eval_grounding.py $(ORG) $(or $(RUNS),1)
+
+voice-eval:       ## voice answers vs knowledge-base passages: make voice-eval ORG=<id> [RUNS=2]
+	cd voice && uv run python scripts/eval_voice.py $(ORG) $(or $(RUNS),1)
 
 voice-latency:    ## a scripted voice call, timed as heard: make voice-latency ORG=<id> [COLD=1]
 	cd voice && uv run python scripts/call_latency.py $(ORG) $(if $(COLD),--cold)

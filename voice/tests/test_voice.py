@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from echo_api import knowledge
 from echo_api.models import ContactSession, Conversation, ConversationStatus
-from echo_voice.bot import KnowledgeRetriever, history_messages
+from echo_voice.bot import PASSAGES, KnowledgeRetriever, history_messages
 
 HIT = knowledge.SearchHit(
     filename="shipping.md", content="Delivery takes 3-5 days.", distance=0.3
@@ -22,8 +22,9 @@ async def test_retriever_gives_the_model_results_and_keeps_history_clean(
     queries: list[str] = []
 
     async def search(
-        db: object, organization_id: str, query: str
+        db: object, organization_id: str, query: str, limit: int
     ) -> list[knowledge.SearchHit]:
+        assert limit == PASSAGES  # fewer than the text chat: see PASSAGES
         queries.append(query)
         return [HIT]
 
@@ -53,7 +54,7 @@ async def test_short_follow_up_is_searched_with_the_previous_turn(
     queries: list[str] = []
 
     async def search(
-        db: object, organization_id: str, query: str
+        db: object, organization_id: str, query: str, limit: int
     ) -> list[knowledge.SearchHit]:
         queries.append(query)
         return []
