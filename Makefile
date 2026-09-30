@@ -1,4 +1,4 @@
-# Echo: AI customer support (chat + voice) that runs entirely on one Mac.
+# Echo: AI customer support with chat and voice.
 # Needs Postgres with pgvector and Ollama; settings come from the root .env.
 export PYDANTIC_AI_NO_BANNER := 1
 

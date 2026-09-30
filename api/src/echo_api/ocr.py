@@ -7,7 +7,7 @@ job, reading documents. It gets one page image at a time with the prompt
 Called through Ollama's native /api/generate rather than the OpenAI-style
 endpoint, because only the native one takes `keep_alive`: the model stays
 loaded while a document's pages are read, then unloads instead of holding
-1.6 GB next to the chat model (a 16 GB Mac fits two models at once).
+1.6 GB next to the chat model.
 
 It doesn't know when to stop. On the sample notice, glm-ocr:q8_0 read the
 page correctly and then started over from the top until it ran out of room

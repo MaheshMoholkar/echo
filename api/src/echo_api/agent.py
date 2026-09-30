@@ -7,7 +7,7 @@ RAG"), but the 4B model skipped the tool for "Do you have a mobile app?" and
 invented "Yes, iOS and Android". Always searching makes grounding
 non-optional, and it's one model call per turn instead of two.
 
-Prompt layout, for Ollama's prompt cache (prefill is ~360 tok/s on an M4 Mac mini,
+Prompt layout, for Ollama's prompt cache (prefill is ~360 tok/s,
 a cached prefix ~25,000 tok/s):
 
     [instructions + tool definitions]    identical on every request
@@ -40,7 +40,6 @@ from echo_api.llm import NO_THINKING, chat_model
 from echo_api.models import Conversation, ConversationStatus, Message, MessageRole
 
 # Short on purpose: every token here is prefill on a cold cache.
-# (Adapted from the template's SUPPORT_AGENT_PROMPT.)
 SUPPORT_INSTRUCTIONS = """\
 You are a friendly customer support assistant chatting with a customer in a \
 website widget.

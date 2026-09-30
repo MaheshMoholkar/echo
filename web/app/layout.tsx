@@ -16,8 +16,7 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: { default: "Echo", template: "%s · Echo" },
-  description:
-    "AI customer support, chat and voice, running on your own machine",
+  description: "AI customer support with chat and voice",
 }
 
 export default function RootLayout({

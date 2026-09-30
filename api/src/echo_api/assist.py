@@ -17,7 +17,6 @@ from pydantic_ai import Agent, ModelRetry, RunContext
 
 from echo_api.llm import NO_THINKING, chat_model
 
-# Adapted from the template's OPERATOR_MESSAGE_ENHANCEMENT_PROMPT.
 ENHANCE_INSTRUCTIONS = """\
 Rewrite a support operator's draft reply to a customer so it is clear, polite \
 and professional.

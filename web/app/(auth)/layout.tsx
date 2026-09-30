@@ -29,8 +29,7 @@ export default function AuthLayout({
               Customer support that answers itself.
             </h2>
             <p className="text-lg text-white/75">
-              An AI agent for your website, grounded in your knowledge base and
-              running entirely on your own machine.
+              An AI agent for your website, grounded in your knowledge base.
             </p>
           </div>
 
@@ -64,10 +63,6 @@ export default function AuthLayout({
             ))}
           </ul>
         </div>
-
-        <p className="relative text-xs text-white/60">
-          Local-first · No cloud APIs · No API keys
-        </p>
       </aside>
 
       <main className="flex flex-col p-6 md:p-10">

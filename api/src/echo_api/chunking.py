@@ -2,7 +2,7 @@
 
 Why chunk at all: a whole document has one embedding, which blurs every
 topic in it together, and pasting whole documents into the prompt is slow
-(prefill runs at ~360 tokens/s on an M4 Mac mini). Small chunks let search return
+(prefill runs at ~360 tokens/s). Small chunks let search return
 just the passages that answer the question.
 
 How big: ~1,000 characters (~250 tokens). Smaller chunks match more

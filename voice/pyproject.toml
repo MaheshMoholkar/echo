@@ -1,7 +1,7 @@
 [project]
 name = "echo-voice"
 version = "0.1.0"
-description = "Echo voice bot: Pipecat with local Whisper, Ollama and Kokoro"
+description = "Echo voice bot: Pipecat with Whisper, Ollama and Kokoro"
 requires-python = ">=3.13"
 dependencies = [
     "echo-api",

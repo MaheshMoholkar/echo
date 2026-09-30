@@ -2,20 +2,16 @@
 
 AI customer support you can embed on a website: a chat and voice widget,
 answered by an AI agent that searches the business's knowledge base and hands
-off to a human operator when needed. Everything runs locally on one Mac: no
-cloud APIs, no API keys.
+off to a human operator when needed.
 
-A local-only rebuild of a Next.js + Convex + Clerk + Vapi + OpenAI SaaS
-template:
-
-| Part | What | Replaces |
-|---|---|---|
-| `web/` | Next.js 16 + shadcn/ui: the dashboard and the `/widget` page | two Next.js apps |
-| `api/` | FastAPI (Python 3.13), PydanticAI agents, SQLAlchemy | Convex |
-| Postgres + pgvector | data and vector search | Convex DB + vector search |
-| Ollama | `qwen3.5:4b` replies, `nomic-embed-text` search, `glm-ocr` OCR | OpenAI |
-| Better Auth | accounts and organizations in Next.js; FastAPI checks its JWTs | Clerk |
-| `voice/` | Pipecat: Silero VAD, Smart Turn v3, Whisper and Kokoro on MLX | Vapi |
+| Part | What |
+|---|---|
+| `web/` | Next.js 16 + shadcn/ui: the dashboard and the `/widget` page |
+| `api/` | FastAPI (Python 3.13), PydanticAI agents, SQLAlchemy |
+| Postgres + pgvector | data and vector search |
+| Ollama | `qwen3.5:4b` replies, `nomic-embed-text` search, `glm-ocr` OCR |
+| Better Auth | accounts and organizations in Next.js; FastAPI checks its JWTs |
+| `voice/` | Pipecat: Silero VAD, Smart Turn v3, Whisper and Kokoro on MLX |
 
 ![Architecture: the browser, Next.js, FastAPI, the Pipecat voice bot, Postgres and Ollama](docs/architecture.png)
 
@@ -33,8 +29,7 @@ template:
 
 ## Requirements
 
-- A Mac with Apple Silicon (the voice bot runs Whisper and Kokoro on the GPU
-  with MLX) and ~16 GB of memory
+- Apple Silicon for the voice bot (Whisper and Kokoro run on MLX)
 - Python 3.13 with [uv](https://docs.astral.sh/uv/), Node.js 22+ with pnpm, `psql`
 - Postgres 17 with pgvector, for example:
 
