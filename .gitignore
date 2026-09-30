@@ -45,9 +45,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# a local copy of the original template, for reference
-ref/
-
 # python
 .venv/
 __pycache__/

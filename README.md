@@ -165,4 +165,3 @@ docs/    architecture diagram, sample knowledge base (used by make seed)
   pushed (instead of polled) updates, billing.
 - Python 3.13 (not 3.14) for the voice dependencies; TypeScript 6 and ESLint 9
   because typescript-eslint and eslint-plugin-react don't support 7 and 10 yet.
-- `lab.yml` is for the author's homelab tooling; `.env` is all you need.

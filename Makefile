@@ -2,9 +2,8 @@
 # Needs Postgres with pgvector and Ollama; settings come from the root .env.
 export PYDANTIC_AI_NO_BANNER := 1
 
-# Next.js only reads env files from web/, so export the root ones for it:
-# .env.lab (optional, written by the author's homelab tool) then .env.
-LOAD_ENV := set -a; [ -f ../.env.lab ] && . ../.env.lab; [ -f ../.env ] && . ../.env; set +a;
+# Next.js only reads env files from web/, so export the root .env for it.
+LOAD_ENV := set -a; [ -f ../.env ] && . ../.env; set +a;
 
 KOKORO_DIR := $(HOME)/.cache/pipecat/kokoro-onnx
 KOKORO_RELEASE := https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
@@ -12,7 +11,6 @@ KOKORO_RELEASE := https://github.com/thewh1teagle/kokoro-onnx/releases/download/
 .PHONY: setup migrate auth-migrate voice-models dev web api voice test check seed eval voice-eval voice-latency
 
 setup:            ## install deps, create tables, fetch voice models
-	if command -v lab >/dev/null; then lab up; fi  # the author's homelab (lab.yml)
 	cd api && uv sync
 	cd voice && uv sync
 	cd web && pnpm install

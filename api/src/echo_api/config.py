@@ -11,13 +11,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     """Everything comes from environment variables.
 
-    `.env` at the repo root (see `.env.example`); `.env.lab`, if present, is
-    written by the author's homelab tool and loaded first. Real environment
-    variables win over both.
+    `.env` at the repo root (see `.env.example`). Real environment variables
+    win over it.
     """
 
     model_config = SettingsConfigDict(
-        env_file=(REPO_ROOT / ".env.lab", REPO_ROOT / ".env"),
+        env_file=REPO_ROOT / ".env",
         extra="ignore",
     )
 
