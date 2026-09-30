@@ -1,0 +1,43 @@
+[project]
+name = "echo-api"
+version = "0.1.0"
+description = "Echo API: widget chat, support agent, auth-verified dashboard routes"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.1",
+    "markitdown[docx,pdf]>=0.1.8",
+    "pgvector>=0.5.0",
+    "pillow>=12.3.0",
+    "psycopg[binary]>=3.3.6",
+    "pydantic-ai-slim[openai]>=2.51.0",
+    "pydantic-settings>=2.15.0",
+    "pyjwt[crypto]>=2.15.1",
+    "pypdfium2>=5.13.0",
+    "sqlalchemy[asyncio]>=2.1.1",
+]
+
+[project.scripts]
+echo-api = "echo_api:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.9",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"  # async tests need no marker
+# One event loop for the whole run: the database engine's pooled
+# connections belong to the loop that opened them.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*" = ["E501"]

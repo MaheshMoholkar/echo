@@ -1,0 +1,4 @@
+# The homelab services Echo needs. `lab up` starts them and writes .env.lab.
+project: echo
+services:
+  postgres: { extensions: [vector] }
