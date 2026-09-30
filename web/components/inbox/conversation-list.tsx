@@ -1,60 +1,95 @@
 "use client"
 
-import { LoaderIcon } from "lucide-react"
+import { InboxIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
-import { Badge } from "@/components/ui/badge"
+import { CountBadge, StatusBadge, statusMeta } from "@/components/status"
 import { Button } from "@/components/ui/button"
 import {
-  inboxApi,
-  statusLabel,
-  type InboxItem,
-  type InboxPage,
-} from "@/lib/inbox-api"
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UserAvatar } from "@/components/user-avatar"
+import { shortAge } from "@/lib/format"
+import { inboxApi, type InboxItem, type InboxPage } from "@/lib/inbox-api"
+import type { ConversationStats } from "@/lib/types"
+import { useApi } from "@/lib/use-api"
+import { useNow } from "@/lib/use-now"
 import { cn } from "@/lib/utils"
 import type { ConversationStatus } from "@/lib/widget-api"
 
 const POLL_MS = 5000 // new conversations and messages show up without a reload
 
-const FILTERS: { label: string; status?: ConversationStatus }[] = [
-  { label: "All" },
-  { label: "Team", status: "escalated" },
-  { label: "AI", status: "unresolved" },
-  { label: "Resolved", status: "resolved" },
+type Filter = ConversationStatus | "all"
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "escalated", label: "Escalated" },
+  { value: "unresolved", label: "AI" },
+  { value: "resolved", label: "Resolved" },
 ]
 
 const who: Record<string, string> = {
   customer: "",
   assistant: "AI: ",
-  operator: "Team: ",
+  operator: "You: ",
 }
 
 export function ConversationList() {
-  const [filter, setFilter] = useState<ConversationStatus | undefined>()
+  const [filter, setFilter] = useState<Filter>("all")
+  const { data: stats } = useApi<ConversationStats>(
+    "/conversations/stats",
+    POLL_MS
+  )
+  const count = (f: Filter) =>
+    stats &&
+    (f === "all"
+      ? stats.unresolved + stats.escalated + stats.resolved
+      : stats[f])
+
   return (
-    <div className="flex flex-col">
-      <div className="flex gap-1 border-b p-2">
-        {FILTERS.map((f) => (
-          <Button
-            key={f.label}
-            size="sm"
-            variant={filter === f.status ? "secondary" : "ghost"}
-            onClick={() => setFilter(f.status)}
-          >
-            {f.label}
-          </Button>
-        ))}
+    <>
+      <div className="grid gap-3 border-b p-3">
+        <div className="flex items-center justify-between px-1">
+          <h1 className="font-semibold">Conversations</h1>
+          {stats && (
+            <span className="text-xs text-muted-foreground">
+              {count("all")} total
+            </span>
+          )}
+        </div>
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+          <TabsList className="w-full">
+            {FILTERS.map((f) => (
+              <TabsTrigger key={f.value} value={f.value} className="text-xs">
+                {f.label}
+                {f.value === "escalated" && !!stats?.escalated && (
+                  <CountBadge
+                    count={stats.escalated}
+                    className="h-4 min-w-4 bg-warning/20 px-1 text-[10px] text-amber-700 dark:text-amber-300"
+                  />
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
       {/* A new key per filter resets the loaded pages. */}
-      <Items key={filter ?? "all"} status={filter} />
-    </div>
+      <Items key={filter} status={filter === "all" ? undefined : filter} />
+    </>
   )
 }
 
 function Items({ status }: { status?: ConversationStatus }) {
   const pathname = usePathname()
+  const now = useNow()
   // The first page is re-fetched on a timer; older pages ("Load more") are
   // fetched once with the cursor and kept below it.
   const [first, setFirst] = useState<InboxPage | null>(null)
@@ -96,15 +131,41 @@ function Items({ status }: { status?: ConversationStatus }) {
   if (error) return <p className="p-4 text-sm text-destructive">{error}</p>
   if (!items)
     return (
-      <LoaderIcon className="mx-auto mt-6 animate-spin text-muted-foreground" />
+      <div className="grid gap-1 p-2">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="flex gap-3 px-3 py-3">
+            <Skeleton className="size-9 rounded-full" />
+            <div className="grid flex-1 gap-2">
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
     )
   if (!items.length)
     return (
-      <p className="p-4 text-sm text-muted-foreground">No conversations.</p>
+      <Empty className="py-16">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <InboxIcon />
+          </EmptyMedia>
+          <EmptyTitle>
+            {status
+              ? `Nothing ${statusMeta[status].label.toLowerCase()}`
+              : "No conversations yet"}
+          </EmptyTitle>
+          <EmptyDescription>
+            {status
+              ? "Conversations show up here when they change status."
+              : "When customers message your widget, they show up here."}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2">
       {items.map((item) => {
         const active = pathname === `/conversations/${item.id}`
         return (
@@ -112,36 +173,35 @@ function Items({ status }: { status?: ConversationStatus }) {
             key={item.id}
             href={`/conversations/${item.id}`}
             className={cn(
-              "flex flex-col gap-1 border-b px-4 py-3 text-sm hover:bg-accent",
-              active && "bg-accent"
+              "flex gap-3 rounded-lg px-3 py-3 transition-colors",
+              active
+                ? "bg-background shadow-xs ring-1 ring-foreground/10"
+                : "hover:bg-muted/70"
             )}
           >
-            <span className="flex items-center justify-between gap-2">
-              <span className="truncate font-medium">{item.contact.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {new Date(item.updated_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </span>
-            <span className="line-clamp-1 text-muted-foreground">
-              {item.last_message
-                ? who[item.last_message.role] + item.last_message.content
-                : "…"}
-            </span>
-            <Badge
-              variant={item.status === "escalated" ? "default" : "outline"}
-              className="w-fit"
-            >
-              {statusLabel[item.status]}
-            </Badge>
+            <UserAvatar name={item.contact.name} className="size-9" />
+            <div className="grid min-w-0 flex-1 gap-1">
+              <div className="flex items-baseline gap-2">
+                <span className="truncate text-sm font-medium">
+                  {item.contact.name}
+                </span>
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                  {shortAge(item.updated_at, now)}
+                </span>
+              </div>
+              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                {item.last_message
+                  ? who[item.last_message.role] + item.last_message.content
+                  : "No messages yet"}
+              </p>
+              <StatusBadge status={item.status} className="mt-0.5 w-fit" />
+            </div>
           </Link>
         )
       })}
       {nextCursor && (
-        <Button variant="ghost" className="m-2" onClick={loadMore}>
-          Load more
+        <Button variant="ghost" size="sm" className="m-2" onClick={loadMore}>
+          Load older conversations
         </Button>
       )}
     </div>

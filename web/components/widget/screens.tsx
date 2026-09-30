@@ -2,107 +2,163 @@
 
 import {
   ArrowLeftIcon,
+  BotIcon,
   ChevronRightIcon,
-  InboxIcon,
   LoaderIcon,
-  MessageSquareTextIcon,
   MicIcon,
+  SendIcon,
   TriangleAlertIcon,
 } from "lucide-react"
 import { useEffect, useEffectEvent, useState } from "react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/spinner"
+import { initials, shortAge } from "@/lib/format"
+import { useNow } from "@/lib/use-now"
 import { cn } from "@/lib/utils"
-import { ApiError, widgetApi, type ConversationSummary } from "@/lib/widget-api"
+import {
+  ApiError,
+  widgetApi,
+  type ContactSession,
+  type ConversationSummary,
+} from "@/lib/widget-api"
 
-export function WidgetHeader({
-  children,
-  className,
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
+/** The business's badge: its initials on a glassy square. */
+function OrgBadge({ name, className }: { name: string; className?: string }) {
   return (
-    <header
+    <span
       className={cn(
-        "bg-gradient-to-b from-primary to-primary/80 p-4 text-primary-foreground",
+        "flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-sm font-semibold ring-1 ring-white/25",
         className
       )}
     >
-      {children}
-    </header>
+      {initials(name, 1)}
+    </span>
   )
 }
 
-function Welcome() {
+/** The assistant's avatar, optionally with a green "online" dot. Glass:
+ * for the brand-colored header. */
+export function AssistantAvatar({
+  className,
+  online,
+  glass,
+}: {
+  className?: string
+  online?: boolean
+  glass?: boolean
+}) {
   return (
-    <WidgetHeader>
-      <div className="flex flex-col gap-1 px-2 py-6 font-semibold">
-        <p className="text-3xl">Hi there! 👋</p>
-        <p className="text-lg">Let&apos;s get you started</p>
+    <span
+      className={cn(
+        "relative flex size-7 shrink-0 items-center justify-center rounded-full text-white",
+        glass ? "bg-white/15 ring-1 ring-white/25" : "bg-brand",
+        className
+      )}
+    >
+      <BotIcon className="size-[55%]" />
+      {online && (
+        <span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-emerald-400 ring-2 ring-primary" />
+      )}
+    </span>
+  )
+}
+
+export function PoweredBy() {
+  return (
+    <p className="shrink-0 py-2 text-center text-[11px] text-muted-foreground">
+      Powered by <span className="font-semibold text-foreground/70">Echo</span>
+    </p>
+  )
+}
+
+function HomeHeader({
+  orgName,
+  title,
+  subtitle,
+}: {
+  orgName: string
+  title: string
+  subtitle: string
+}) {
+  return (
+    <header className="relative shrink-0 overflow-hidden bg-brand px-6 pt-6 pb-20 text-white">
+      <div className="absolute -top-16 -right-16 size-48 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-center gap-2.5">
+        <OrgBadge name={orgName} />
+        <span className="truncate font-medium">{orgName}</span>
       </div>
-    </WidgetHeader>
+      <div className="relative mt-8 grid gap-1">
+        <p className="text-3xl font-semibold tracking-tight">{title}</p>
+        <p className="text-lg text-white/80">{subtitle}</p>
+      </div>
+    </header>
   )
 }
 
 export function BackHeader({
   title,
+  subtitle,
   onBack,
-  children,
+  avatar,
 }: {
   title: string
+  subtitle?: string
   onBack: () => void
-  children?: React.ReactNode
+  avatar?: React.ReactNode
 }) {
   return (
-    <WidgetHeader className="flex items-center gap-2 py-3">
+    <header className="flex shrink-0 items-center gap-2 bg-brand px-2 py-3 text-white">
       <Button
         variant="ghost"
         size="icon"
-        className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+        className="text-white hover:bg-white/15 hover:text-white"
         onClick={onBack}
         aria-label="Back"
       >
         <ArrowLeftIcon />
       </Button>
-      <p className="font-medium">{title}</p>
-      <div className="ml-auto">{children}</div>
-    </WidgetHeader>
+      {avatar}
+      <div className="grid min-w-0 leading-tight">
+        <p className="truncate font-semibold">{title}</p>
+        {subtitle && (
+          <p className="truncate text-xs text-white/75">{subtitle}</p>
+        )}
+      </div>
+    </header>
   )
 }
 
 export function LoadingScreen() {
   return (
-    <>
-      <Welcome />
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        <LoaderIcon className="animate-spin" />
-      </div>
-    </>
+    <div className="flex flex-1 items-center justify-center text-muted-foreground">
+      <Spinner className="size-6" />
+    </div>
   )
 }
 
 export function ErrorScreen({ message }: { message: string }) {
   return (
-    <>
-      <Welcome />
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
-        <TriangleAlertIcon />
-        <p>{message}</p>
-      </div>
-    </>
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+      <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+        <TriangleAlertIcon className="size-5" />
+      </span>
+      <p className="font-medium">Something&apos;s not right</p>
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
   )
 }
 
 export function AuthScreen({
   organizationId,
+  orgName,
   onSignedIn,
 }: {
   organizationId: string
-  onSignedIn: (session: string) => void
+  orgName: string
+  onSignedIn: (session: ContactSession) => void
 }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -118,7 +174,7 @@ export function AuthScreen({
         String(form.get("name")),
         String(form.get("email"))
       )
-      onSignedIn(session.id)
+      onSignedIn(session)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong")
       setPending(false)
@@ -126,12 +182,32 @@ export function AuthScreen({
   }
 
   return (
-    <>
-      <Welcome />
-      <form onSubmit={onSubmit} className="flex flex-1 flex-col gap-4 p-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <HomeHeader
+        orgName={orgName}
+        title="Hi there 👋"
+        subtitle="Ask us anything. We're here to help."
+      />
+      <form
+        onSubmit={onSubmit}
+        className="relative mx-4 -mt-12 grid gap-4 rounded-2xl bg-card p-5 shadow-lg ring-1 ring-foreground/5"
+      >
+        <div className="grid gap-1">
+          <p className="font-semibold">Start a conversation</p>
+          <p className="text-sm text-muted-foreground">
+            Tell us who you are so we can follow up.
+          </p>
+        </div>
         <div className="grid gap-2">
           <Label htmlFor="name">Name</Label>
-          <Input id="name" name="name" autoComplete="name" required />
+          <Input
+            id="name"
+            name="name"
+            autoComplete="name"
+            placeholder="Your name"
+            className="h-10"
+            required
+          />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
@@ -140,33 +216,76 @@ export function AuthScreen({
             name="email"
             type="email"
             autoComplete="email"
+            placeholder="you@example.com"
+            className="h-10"
             required
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" disabled={pending} className="mt-auto">
+        <Button type="submit" disabled={pending} className="h-10">
+          {pending && <Spinner />}
           Continue
         </Button>
       </form>
-    </>
+      <div className="mt-auto pt-4">
+        <PoweredBy />
+      </div>
+    </div>
+  )
+}
+
+function ActionCard({
+  title,
+  text,
+  icon: Icon,
+  onClick,
+  disabled,
+}: {
+  title: string
+  text: string
+  icon: typeof SendIcon
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="group flex items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-md ring-1 ring-foreground/5 transition hover:shadow-lg hover:ring-primary/30 disabled:opacity-60"
+    >
+      <div className="grid flex-1 gap-0.5">
+        <p className="font-semibold">{title}</p>
+        <p className="text-sm text-muted-foreground">{text}</p>
+      </div>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition group-hover:scale-105">
+        <Icon className="size-4" />
+      </span>
+    </button>
   )
 }
 
 export function SelectionScreen({
   session,
+  orgName,
+  contactName,
   onChat,
   onVoice,
   onInbox,
+  onOpen,
   onExpired,
 }: {
   session: string
+  orgName: string
+  contactName: string | null
   onChat: (conversationId: string) => void
   onVoice: (conversationId: string) => void
   onInbox: () => void
+  onOpen: (conversationId: string) => void
   onExpired: () => void
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const recent = useConversations(session, onExpired)
 
   // Chat and voice both start a conversation: a call's transcript is saved
   // to it, so the team sees voice and text in the same inbox.
@@ -183,77 +302,68 @@ export function SelectionScreen({
     }
   }
 
+  const firstName = contactName?.split(" ")[0]
+
   return (
-    <>
-      <Welcome />
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <Button
-          variant="outline"
-          className="h-14 justify-between bg-background"
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <HomeHeader
+        orgName={orgName}
+        title={firstName ? `Hi ${firstName} 👋` : "Hi there 👋"}
+        subtitle="How can we help today?"
+      />
+      <div className="relative -mt-12 grid gap-3 px-4">
+        <ActionCard
+          title="Send us a message"
+          text="Our AI assistant replies in seconds"
+          icon={SendIcon}
           onClick={() => start(onChat)}
           disabled={pending}
-        >
-          <span className="flex items-center gap-2">
-            <MessageSquareTextIcon /> Start chat
-          </span>
-          <ChevronRightIcon />
-        </Button>
-        <Button
-          variant="outline"
-          className="h-14 justify-between bg-background"
+        />
+        <ActionCard
+          title="Call us"
+          text="Talk it through with our voice assistant"
+          icon={MicIcon}
           onClick={() => start(onVoice)}
           disabled={pending}
-        >
-          <span className="flex items-center gap-2">
-            <MicIcon /> Talk to us
-          </span>
-          <ChevronRightIcon />
-        </Button>
-        <Button
-          variant="outline"
-          className="h-14 justify-between bg-background"
-          onClick={onInbox}
-        >
-          <span className="flex items-center gap-2">
-            <InboxIcon /> Previous conversations
-          </span>
-          <ChevronRightIcon />
-        </Button>
+        />
         {error && <p className="text-sm text-destructive">{error}</p>}
+        {!!recent?.length && (
+          <div className="rounded-2xl bg-card shadow-md ring-1 ring-foreground/5">
+            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+              <p className="text-sm font-semibold">Recent conversations</p>
+              {recent.length > 3 && (
+                <button
+                  onClick={onInbox}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  See all
+                </button>
+              )}
+            </div>
+            <ConversationRows items={recent.slice(0, 3)} onOpen={onOpen} />
+          </div>
+        )}
       </div>
-    </>
+      <div className="mt-auto pt-4">
+        <PoweredBy />
+      </div>
+    </div>
   )
 }
 
-const statusLabel: Record<ConversationSummary["status"], string> = {
-  unresolved: "Open",
-  escalated: "With the team",
-  resolved: "Closed",
+const customerStatus: Record<
+  ConversationSummary["status"],
+  { label: string; className: string }
+> = {
+  unresolved: { label: "Open", className: "text-primary" },
+  escalated: {
+    label: "With our team",
+    className: "text-amber-700 dark:text-amber-300",
+  },
+  resolved: { label: "Closed", className: "text-muted-foreground" },
 }
 
-export function StatusBadge({
-  status,
-}: {
-  status: ConversationSummary["status"]
-}) {
-  return (
-    <Badge variant={status === "resolved" ? "outline" : "secondary"}>
-      {statusLabel[status]}
-    </Badge>
-  )
-}
-
-export function InboxScreen({
-  session,
-  onOpen,
-  onBack,
-  onExpired,
-}: {
-  session: string
-  onOpen: (conversationId: string) => void
-  onBack: () => void
-  onExpired: () => void
-}) {
+function useConversations(session: string, onExpired: () => void) {
   const [conversations, setConversations] = useState<
     ConversationSummary[] | null
   >(null)
@@ -276,39 +386,84 @@ export function InboxScreen({
     }
   }, [session])
 
+  return conversations
+}
+
+function ConversationRows({
+  items,
+  onOpen,
+}: {
+  items: ConversationSummary[]
+  onOpen: (conversationId: string) => void
+}) {
+  const now = useNow()
   return (
-    <>
-      <BackHeader title="Previous conversations" onBack={onBack} />
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-4">
-        {conversations === null && (
-          <LoaderIcon className="mx-auto mt-8 animate-spin text-muted-foreground" />
-        )}
-        {conversations?.length === 0 && (
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            No conversations yet.
-          </p>
-        )}
-        {conversations?.map((conversation) => (
+    <div className="grid p-1.5">
+      {items.map((conversation) => {
+        const status = customerStatus[conversation.status]
+        return (
           <button
             key={conversation.id}
             onClick={() => onOpen(conversation.id)}
-            className="flex flex-col gap-1 rounded-lg border bg-background p-3 text-left text-sm hover:bg-accent"
+            className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
           >
-            <span className="flex items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">
-                {new Date(conversation.updated_at).toLocaleString([], {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </span>
-              <StatusBadge status={conversation.status} />
-            </span>
-            <span className="line-clamp-1">
-              {conversation.last_message?.content ?? "…"}
-            </span>
+            <AssistantAvatar className="size-9" />
+            <div className="grid min-w-0 flex-1 gap-0.5">
+              <p className="truncate text-sm">
+                {conversation.last_message?.content ?? "New conversation"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <span className={cn("font-medium", status.className)}>
+                  {status.label}
+                </span>
+                {" · "}
+                {shortAge(conversation.updated_at, now)}
+              </p>
+            </div>
+            <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
           </button>
-        ))}
+        )
+      })}
+    </div>
+  )
+}
+
+export function InboxScreen({
+  session,
+  orgName,
+  onOpen,
+  onBack,
+  onExpired,
+}: {
+  session: string
+  orgName: string
+  onOpen: (conversationId: string) => void
+  onBack: () => void
+  onExpired: () => void
+}) {
+  const conversations = useConversations(session, onExpired)
+
+  return (
+    <>
+      <BackHeader
+        title="Your conversations"
+        subtitle={orgName}
+        onBack={onBack}
+      />
+      <div className="flex flex-1 flex-col overflow-y-auto">
+        {conversations === null && (
+          <LoaderIcon className="mx-auto mt-10 animate-spin text-muted-foreground" />
+        )}
+        {conversations?.length === 0 && (
+          <p className="mt-10 text-center text-sm text-muted-foreground">
+            No conversations yet.
+          </p>
+        )}
+        {conversations && (
+          <ConversationRows items={conversations} onOpen={onOpen} />
+        )}
       </div>
+      <PoweredBy />
     </>
   )
 }

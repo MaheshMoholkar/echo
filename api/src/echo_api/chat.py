@@ -19,6 +19,7 @@ from echo_api.models import (
 from echo_api.schemas import (
     ContactOut,
     ContactSessionCreate,
+    ConversationStats,
     ConversationSummary,
     InboxItem,
     InboxPage,
@@ -168,6 +169,18 @@ def decode_cursor(cursor: str) -> tuple[datetime, uuid.UUID]:
         return datetime.fromisoformat(updated_at), uuid.UUID(conversation_id)
     except ValueError as exc:  # also covers bad base64 and bad UUIDs
         raise InvalidCursor("Invalid cursor") from exc
+
+
+async def count_by_status(db: AsyncSession, organization_id: str) -> ConversationStats:
+    """The dashboard's counters: one grouped count, no rows loaded."""
+    rows = await db.execute(
+        select(Conversation.status, func.count())
+        .where(Conversation.organization_id == organization_id)
+        .group_by(Conversation.status)
+    )
+    counts = {status.value: 0 for status in ConversationStatus}
+    counts.update({status.value: n for status, n in rows.tuples()})
+    return ConversationStats(**counts)
 
 
 async def list_inbox(

@@ -15,6 +15,6 @@ export const config = {
   // Everything except the auth pages, API routes (they authenticate
   // themselves), the public widget, Next.js internals and static files.
   matcher: [
-    "/((?!sign-in|sign-up|api|widget|_next/static|_next/image|favicon.ico).*)",
+    "/((?!sign-in|sign-up|api|widget|_next/static|_next/image|favicon.ico|icon.svg).*)",
   ],
 }

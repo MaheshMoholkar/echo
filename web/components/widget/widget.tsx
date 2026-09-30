@@ -11,7 +11,7 @@ import {
   LoadingScreen,
   SelectionScreen,
 } from "@/components/widget/screens"
-import { ApiError, widgetApi } from "@/lib/widget-api"
+import { ApiError, widgetApi, type ContactSession } from "@/lib/widget-api"
 
 type Screen =
   | { name: "loading" }
@@ -50,6 +50,9 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
       : { name: "error", message: "Missing organizationId in the widget URL." }
   )
   const [session, setSession] = useState<string | null>(null)
+  // For the header and the greeting.
+  const [orgName, setOrgName] = useState("")
+  const [contactName, setContactName] = useState<string | null>(null)
 
   useEffect(() => {
     if (!organizationId) return
@@ -57,19 +60,20 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
 
     async function init(orgId: string) {
       try {
-        await widgetApi.organization(orgId)
-        let valid: string | null = null
+        const organization = await widgetApi.organization(orgId)
+        let valid: ContactSession | null = null
         const stored = readSession(orgId)
         if (stored) {
           try {
-            await widgetApi.currentSession(stored)
-            valid = stored
+            valid = await widgetApi.currentSession(stored)
           } catch {
             writeSession(orgId, null) // expired or unknown: ask again
           }
         }
         if (cancelled) return
-        setSession(valid)
+        setOrgName(organization.name)
+        setSession(valid?.id ?? null)
+        setContactName(valid?.name ?? null)
         setScreen(valid ? { name: "selection" } : { name: "auth" })
       } catch (error) {
         if (cancelled) return
@@ -89,10 +93,11 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
     }
   }, [organizationId])
 
-  function signedIn(newSession: string) {
+  function signedIn(newSession: ContactSession) {
     if (!organizationId) return
-    writeSession(organizationId, newSession)
-    setSession(newSession)
+    writeSession(organizationId, newSession.id)
+    setSession(newSession.id)
+    setContactName(newSession.name)
     setScreen({ name: "selection" })
   }
 
@@ -103,15 +108,24 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
   }
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-muted">
+    <div className="flex h-svh flex-col overflow-hidden bg-background">
       {screen.name === "loading" && <LoadingScreen />}
       {screen.name === "error" && <ErrorScreen message={screen.message} />}
       {screen.name === "auth" && organizationId && (
-        <AuthScreen organizationId={organizationId} onSignedIn={signedIn} />
+        <AuthScreen
+          organizationId={organizationId}
+          orgName={orgName}
+          onSignedIn={signedIn}
+        />
       )}
       {session && screen.name === "selection" && (
         <SelectionScreen
           session={session}
+          orgName={orgName}
+          contactName={contactName}
+          onOpen={(conversationId) =>
+            setScreen({ name: "chat", conversationId })
+          }
           onChat={(conversationId) =>
             setScreen({ name: "chat", conversationId })
           }
@@ -125,6 +139,7 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
       {session && screen.name === "inbox" && (
         <InboxScreen
           session={session}
+          orgName={orgName}
           onOpen={(conversationId) =>
             setScreen({ name: "chat", conversationId })
           }
@@ -136,6 +151,7 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
         <VoiceScreen
           key={screen.conversationId}
           session={session}
+          orgName={orgName}
           conversationId={screen.conversationId}
           onBack={() => setScreen({ name: "selection" })}
           onChat={() =>
@@ -147,6 +163,7 @@ export function Widget({ organizationId }: { organizationId: string | null }) {
         <ChatScreen
           key={screen.conversationId}
           session={session}
+          orgName={orgName}
           conversationId={screen.conversationId}
           onBack={() => setScreen({ name: "selection" })}
           onExpired={sessionExpired}

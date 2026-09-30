@@ -1,5 +1,6 @@
 "use client"
 
+import { KeyRoundIcon, ShieldCheckIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -54,9 +55,9 @@ async function load(): Promise<State> {
 
 function Field({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="flex justify-between gap-4 py-1 font-mono text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="truncate">{String(value ?? "—")}</span>
+    <div className="flex justify-between gap-4 py-1.5 text-xs">
+      <span className="font-mono text-muted-foreground">{label}</span>
+      <span className="truncate font-mono">{String(value ?? "—")}</span>
     </div>
   )
 }
@@ -74,67 +75,74 @@ export function ApiIdentity() {
     }
   }, [])
 
-  if (state.kind !== "done") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>API identity</CardTitle>
-          <CardDescription>
-            {state.kind === "loading" ? "Checking…" : state.message}
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
-
-  const { claims, minutesLeft, verified, status } = state
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>API identity</CardTitle>
+        <CardTitle>Authentication</CardTitle>
         <CardDescription>
-          The token Better Auth issued, and what FastAPI made of it.
+          The dashboard calls the API with a 15-minute token from Better Auth.
+          This is that token, and what the API made of it.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-6 md:grid-cols-2">
-        <div>
-          <p className="mb-2 text-sm font-medium">
-            Token claims{" "}
-            <span className="font-normal text-muted-foreground">
-              (decoded in the browser, not trusted)
-            </span>
-          </p>
+      {state.kind === "done" ? (
+        <Verified {...state} />
+      ) : (
+        <CardContent className="text-sm text-muted-foreground">
+          {state.kind === "loading" ? "Checking…" : state.message}
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+function Verified({
+  claims,
+  minutesLeft,
+  verified,
+  status,
+}: Extract<State, { kind: "done" }>) {
+  return (
+    <CardContent className="grid gap-4 md:grid-cols-2">
+      <div className="rounded-lg border p-3">
+        <p className="mb-1 flex items-center gap-2 text-sm font-medium">
+          <KeyRoundIcon className="size-4 text-muted-foreground" />
+          Token claims
+        </p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Decoded in the browser, so not trusted.
+        </p>
+        <div className="divide-y">
           <Field label="sub" value={claims.sub} />
           <Field label="orgId" value={claims.orgId} />
           <Field label="aud" value={claims.aud} />
           <Field label="iss" value={claims.iss} />
           <Field label="expires" value={`in ${minutesLeft} min`} />
         </div>
-        <div>
-          <p className="mb-2 flex items-center gap-2 text-sm font-medium">
-            GET /v1/me
-            <Badge variant={verified ? "secondary" : "destructive"}>
-              {status}
-            </Badge>
-          </p>
-          {verified ? (
-            <>
-              <Field label="user_id" value={verified.user_id} />
-              <Field label="org_id" value={verified.org_id} />
-              <Field label="email" value={verified.email} />
-              <p className="mt-2 text-xs text-muted-foreground">
-                Signature, issuer, audience and expiry checked with the public
-                key from /api/auth/jwks.
-              </p>
-            </>
-          ) : (
-            <p className="text-xs text-destructive">
-              FastAPI rejected the token.
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+      <div className="rounded-lg border p-3">
+        <p className="mb-1 flex items-center gap-2 text-sm font-medium">
+          <ShieldCheckIcon className="size-4 text-muted-foreground" />
+          GET /v1/me
+          <Badge
+            variant={verified ? "secondary" : "destructive"}
+            className="ml-auto font-mono"
+          >
+            {status}
+          </Badge>
+        </p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          {verified
+            ? "Signature, issuer, audience and expiry checked with the public key from /api/auth/jwks."
+            : "FastAPI rejected the token."}
+        </p>
+        {verified && (
+          <div className="divide-y">
+            <Field label="user_id" value={verified.user_id} />
+            <Field label="org_id" value={verified.org_id} />
+            <Field label="email" value={verified.email} />
+          </div>
+        )}
+      </div>
+    </CardContent>
   )
 }

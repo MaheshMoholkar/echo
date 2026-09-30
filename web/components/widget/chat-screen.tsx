@@ -1,12 +1,20 @@
 "use client"
 
-import { LoaderIcon, SendIcon } from "lucide-react"
+import {
+  ArrowUpIcon,
+  CheckCircle2Icon,
+  HeadsetIcon,
+  UserRoundIcon,
+} from "lucide-react"
 import { useEffect, useEffectEvent, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { BackHeader, StatusBadge } from "@/components/widget/screens"
-import { cn } from "@/lib/utils"
+import { Spinner } from "@/components/ui/spinner"
+import {
+  AssistantAvatar,
+  BackHeader,
+  PoweredBy,
+} from "@/components/widget/screens"
 import {
   ApiError,
   sendMessage,
@@ -23,36 +31,95 @@ const toolNotes: Record<string, string> = {
   resolve_conversation: "Closing the conversation…",
 }
 
-function Bubble({ message }: { message: Pick<Message, "role" | "content"> }) {
-  const mine = message.role === "customer"
+export function TeamAvatar() {
   return (
-    <div
-      className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}
-    >
-      {message.role === "operator" && (
-        <span className="px-1 text-xs text-muted-foreground">Support team</span>
-      )}
-      <p
-        className={cn(
-          "max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
-          mine
-            ? "rounded-br-sm bg-primary text-primary-foreground"
-            : "rounded-bl-sm border bg-background"
-        )}
-      >
+    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+      <HeadsetIcon className="size-3.5" />
+    </span>
+  )
+}
+
+export function Bubble({
+  message,
+  children,
+}: {
+  message: Pick<Message, "role" | "content">
+  children?: React.ReactNode
+}) {
+  if (message.role === "customer")
+    return (
+      <p className="max-w-[80%] self-end rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap text-primary-foreground">
         {message.content}
       </p>
+    )
+  const team = message.role === "operator"
+  return (
+    <div className="flex max-w-[88%] items-end gap-2">
+      {team ? <TeamAvatar /> : <AssistantAvatar />}
+      <div className="grid gap-1">
+        {team && (
+          <span className="px-1 text-xs text-muted-foreground">
+            Support team
+          </span>
+        )}
+        <p className="rounded-2xl rounded-bl-md bg-muted px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap">
+          {message.content}
+          {children}
+        </p>
+      </div>
     </div>
+  )
+}
+
+function Typing({ note }: { note: string | null }) {
+  return (
+    <div className="flex items-end gap-2">
+      <AssistantAvatar />
+      <div className="grid gap-1">
+        <span
+          className="flex h-9 w-14 items-center justify-center gap-1 rounded-2xl rounded-bl-md bg-muted"
+          aria-label="Typing"
+        >
+          {[0, 150, 300].map((delay) => (
+            <span
+              key={delay}
+              className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </span>
+        {note && (
+          <span className="px-1 text-xs text-muted-foreground">{note}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Notice({
+  icon: Icon,
+  children,
+}: {
+  icon: typeof HeadsetIcon
+  children: React.ReactNode
+}) {
+  return (
+    <p className="mx-auto my-1 flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+      <Icon className="size-3.5" />
+      {children}
+    </p>
   )
 }
 
 export function ChatScreen({
   session,
+  orgName,
   conversationId,
   onBack,
   onExpired,
 }: {
   session: string
+  orgName: string
   conversationId: string
   onBack: () => void
   onExpired: () => void
@@ -170,57 +237,79 @@ export function ChatScreen({
 
   return (
     <>
-      <BackHeader title="Chat" onBack={onBack}>
-        {status && <StatusBadge status={status} />}
-      </BackHeader>
+      <BackHeader
+        title={orgName}
+        subtitle={
+          status === "escalated"
+            ? "Our team will reply here"
+            : closed
+              ? "Conversation closed"
+              : "AI assistant · Replies instantly"
+        }
+        onBack={onBack}
+        avatar={<AssistantAvatar online={!closed} glass className="size-9" />}
+      />
 
-      <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-5">
         {!conversation && !error && (
-          <LoaderIcon className="mx-auto mt-8 animate-spin text-muted-foreground" />
+          <Spinner className="mx-auto mt-8 text-muted-foreground" />
         )}
         {conversation?.messages.map((message) => (
           <Bubble key={message.id} message={message} />
         ))}
         {streaming !== null &&
           (streaming ? (
-            <Bubble message={{ role: "assistant", content: streaming }} />
+            <Bubble message={{ role: "assistant", content: streaming }}>
+              <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-foreground/40 align-middle" />
+            </Bubble>
           ) : (
-            <p className="text-sm text-muted-foreground">{note ?? "Typing…"}</p>
+            <Typing note={note} />
           ))}
         {status === "escalated" && !busy && (
-          <p className="text-center text-xs text-muted-foreground">
-            A team member will reply here.
-          </p>
+          <Notice icon={UserRoundIcon}>
+            You&apos;re connected with our team. They&apos;ll reply here.
+          </Notice>
         )}
         {closed && (
-          <p className="text-center text-xs text-muted-foreground">
-            This conversation is closed.
-          </p>
+          <div className="grid justify-items-center gap-2">
+            <Notice icon={CheckCircle2Icon}>
+              This conversation is closed.
+            </Notice>
+            <Button size="sm" variant="outline" onClick={onBack}>
+              Start a new conversation
+            </Button>
+          </div>
         )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p className="text-center text-sm text-destructive">{error}</p>
+        )}
         <div ref={bottom} />
       </div>
 
-      <form
-        onSubmit={onSubmit}
-        className="flex gap-2 border-t bg-background p-3"
-      >
-        <Input
-          name="content"
-          placeholder={closed ? "Conversation closed" : "Type a message…"}
-          autoComplete="off"
-          maxLength={4000}
-          disabled={busy || closed || !conversation}
-          required
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={busy || closed || !conversation}
-          aria-label="Send"
-        >
-          <SendIcon />
-        </Button>
+      <form onSubmit={onSubmit} className="shrink-0 border-t px-3 pt-3">
+        <div className="flex items-center gap-1 rounded-full border bg-background py-1 pr-1 pl-4 shadow-xs transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
+          <input
+            name="content"
+            placeholder={
+              closed ? "This conversation is closed" : "Write a message…"
+            }
+            autoComplete="off"
+            maxLength={4000}
+            disabled={busy || closed || !conversation}
+            required
+            className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            className="rounded-full"
+            disabled={busy || closed || !conversation}
+            aria-label="Send"
+          >
+            <ArrowUpIcon />
+          </Button>
+        </div>
+        <PoweredBy />
       </form>
     </>
   )

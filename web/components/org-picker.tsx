@@ -1,18 +1,15 @@
 "use client"
 
+import { ChevronRightIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
+import { UserAvatar } from "@/components/user-avatar"
 import { clearApiToken } from "@/lib/api"
 import { authClient } from "@/lib/auth-client"
 
@@ -25,7 +22,7 @@ function slugify(name: string) {
   return `${base || "org"}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-export function OrgPicker() {
+export function OrgPicker({ email }: { email: string }) {
   const router = useRouter()
   const { data: organizations, isPending } = authClient.useListOrganizations()
   const [error, setError] = useState<string | null>(null)
@@ -62,49 +59,94 @@ export function OrgPicker() {
     enterDashboard()
   }
 
+  async function signOut() {
+    await authClient.signOut()
+    clearApiToken()
+    router.push("/sign-in")
+    router.refresh()
+  }
+
+  const hasOrganizations = !!organizations?.length
+
   return (
-    <div className="flex flex-col gap-6">
-      {!isPending && organizations && organizations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your organizations</CardTitle>
-            <CardDescription>Pick one to work in.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {organizations.map((org) => (
-              <Button
-                key={org.id}
-                variant="outline"
-                className="justify-start"
-                disabled={busy}
-                onClick={() => choose(org.id)}
-              >
-                {org.name}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
+    <div className="grid gap-8">
+      <div className="grid gap-2">
+        <h1 className="text-2xl font-semibold">
+          {hasOrganizations
+            ? "Choose an organization"
+            : "Set up your organization"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Each organization has its own knowledge base, inbox and widget.
+        </p>
+      </div>
+
+      {isPending && (
+        <div className="grid gap-2">
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-14 rounded-xl" />
+        </div>
       )}
-      <Card>
-        <CardHeader>
-          <CardTitle>Create an organization</CardTitle>
-          <CardDescription>
-            The business whose customers the widget will talk to.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={create} className="flex flex-col gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" placeholder="Acme Inc." required />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={busy}>
-              Create
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      {hasOrganizations && (
+        <div className="grid gap-2">
+          {organizations.map((org) => (
+            <button
+              key={org.id}
+              disabled={busy}
+              onClick={() => choose(org.id)}
+              className="flex items-center gap-3 rounded-xl border bg-card px-3 py-3 text-left shadow-xs transition-colors hover:border-primary/40 hover:bg-accent/40 disabled:opacity-60"
+            >
+              <UserAvatar name={org.name} square className="size-9" />
+              <span className="flex-1 truncate font-medium">{org.name}</span>
+              <ChevronRightIcon className="size-4 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={create} className="grid gap-4">
+        {hasOrganizations && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or create a new one
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        )}
+        <div className="grid gap-2">
+          <Label htmlFor="name">Organization name</Label>
+          <Input
+            id="name"
+            name="name"
+            placeholder="Acme Inc."
+            className="h-10"
+            required
+          />
+        </div>
+        {error && (
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          disabled={busy}
+          variant={hasOrganizations ? "outline" : "default"}
+          className="h-10"
+        >
+          {busy && <Spinner />}
+          Create organization
+        </Button>
+      </form>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Signed in as {email} ·{" "}
+        <button
+          onClick={signOut}
+          className="font-medium hover:text-foreground hover:underline"
+        >
+          Sign out
+        </button>
+      </p>
     </div>
   )
 }

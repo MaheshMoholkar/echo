@@ -104,6 +104,14 @@ class InboxPage(BaseModel):
     next_cursor: str | None
 
 
+class ConversationStats(BaseModel):
+    """How many of an organization's conversations are in each status."""
+
+    unresolved: int
+    escalated: int
+    resolved: int
+
+
 class OperatorConversation(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

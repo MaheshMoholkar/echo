@@ -1,7 +1,6 @@
-import Link from "next/link"
-
-import { DashboardNav } from "@/components/dashboard-nav"
-import { UserMenu } from "@/components/user-menu"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { requireOrganization } from "@/lib/session"
 
 export default async function DashboardLayout({
@@ -14,24 +13,16 @@ export default async function DashboardLayout({
   const { user, organization } = await requireOrganization()
 
   return (
-    <div className="flex h-svh flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <div className="flex items-center gap-3 text-sm">
-          <span className="font-semibold">Echo</span>
-          <span className="text-muted-foreground">/</span>
-          <span className="font-medium">{organization.name}</span>
-          <Link
-            href="/org-selection"
-            className="text-xs text-muted-foreground underline"
-          >
-            Switch
-          </Link>
-        </div>
-        <UserMenu email={user.email} />
-      </header>
-      <DashboardNav />
-      {/* Pages choose their own width: the inbox uses all of it. */}
-      <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
-    </div>
+    <SidebarProvider className="h-svh">
+      <AppSidebar
+        user={{ name: user.name, email: user.email }}
+        organization={{ id: organization.id, name: organization.name }}
+      />
+      <SidebarInset className="min-h-0 overflow-hidden">
+        <SiteHeader organizationId={organization.id} />
+        {/* Pages choose their own width: the inbox uses all of it. */}
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

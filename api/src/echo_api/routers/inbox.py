@@ -10,6 +10,7 @@ from echo_api.auth import OrgUser
 from echo_api.db import DbSession
 from echo_api.models import Conversation, ConversationStatus, MessageRole
 from echo_api.schemas import (
+    ConversationStats,
     InboxPage,
     MessageCreate,
     MessageOut,
@@ -46,6 +47,12 @@ async def list_conversations(
         return await chat.list_inbox(db, principal.org_id, status_, limit, cursor)
     except chat.InvalidCursor as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
+
+# Before /{conversation_id}, which would otherwise take "stats" for an id.
+@router.get("/stats")
+async def conversation_stats(principal: OrgUser, db: DbSession) -> ConversationStats:
+    return await chat.count_by_status(db, principal.org_id)
 
 
 @router.get("/{conversation_id}")

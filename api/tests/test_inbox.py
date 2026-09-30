@@ -169,6 +169,28 @@ async def test_other_organizations_see_nothing(
     assert reply.status_code == 404
 
 
+async def test_stats_count_each_status_in_the_organization(
+    client: httpx.AsyncClient, make_organization: Callable[[], Awaitable[str]]
+) -> None:
+    acme, globex = await make_organization(), await make_organization()
+    ana = await Visitor.start(client, acme, "Ana")
+    ben = await Visitor.start(client, acme, "Ben")
+    await Visitor.start(client, acme, "Cleo")
+    await Visitor.start(client, globex, "Dev")
+    for visitor, status in [(ana, "escalated"), (ben, "resolved")]:
+        await client.patch(
+            f"/v1/conversations/{visitor.conversation_id}",
+            headers=bearer(acme),
+            json={"status": status},
+        )
+
+    stats = await client.get("/v1/conversations/stats", headers=bearer(acme))
+    assert stats.json() == {"unresolved": 1, "escalated": 1, "resolved": 1}
+    empty = await make_organization()
+    stats = await client.get("/v1/conversations/stats", headers=bearer(empty))
+    assert stats.json() == {"unresolved": 0, "escalated": 0, "resolved": 0}
+
+
 async def test_inbox_needs_a_token_with_an_organization(
     client: httpx.AsyncClient,
 ) -> None:

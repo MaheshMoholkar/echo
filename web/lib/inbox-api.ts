@@ -61,13 +61,16 @@ export const inboxApi = {
   list: ({
     status,
     cursor,
+    limit,
   }: {
     status?: ConversationStatus
     cursor?: string
+    limit?: number
   }) => {
     const params = new URLSearchParams()
     if (status) params.set("status", status)
     if (cursor) params.set("cursor", cursor)
+    if (limit) params.set("limit", String(limit))
     return apiFetch(`/conversations?${params}`).then(json<InboxPage>)
   },
 
@@ -90,10 +93,4 @@ export const inboxApi = {
     apiFetch("/assist/enhance", { method: "POST", ...jsonBody({ text }) }).then(
       json<{ text: string }>
     ),
-}
-
-export const statusLabel: Record<ConversationStatus, string> = {
-  unresolved: "AI answering",
-  escalated: "With the team",
-  resolved: "Resolved",
 }

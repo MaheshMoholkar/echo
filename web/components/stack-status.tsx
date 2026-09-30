@@ -1,9 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { RefreshCwIcon } from "lucide-react"
+import {
+  BrainCircuitIcon,
+  DatabaseIcon,
+  RefreshCwIcon,
+  ServerIcon,
+} from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
+import { Dot } from "@/components/status"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,144 +17,105 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-
-// Mirrors `Health` in api/src/echo_api/routers/health.py.
-type Health = {
-  status: "ok" | "degraded"
-  database: { ok: boolean; pgvector: string | null; error: string | null }
-  ollama: {
-    ok: boolean
-    models: string[]
-    missing: string[]
-    optional_missing: string[]
-    error: string | null
-  }
-}
-
-type State =
-  | { kind: "loading" }
-  | { kind: "loaded"; health: Health; ms: number }
-  | { kind: "error"; message: string }
-
-async function fetchHealth(): Promise<State> {
-  const started = performance.now()
-  try {
-    // Same origin: next.config.ts proxies /api/v1/* to FastAPI.
-    const res = await fetch("/api/v1/health", { cache: "no-store" })
-    if (!res.ok) {
-      return {
-        kind: "error",
-        message: `API answered ${res.status}. Is \`make api\` running?`,
-      }
-    }
-    const health = (await res.json()) as Health
-    return {
-      kind: "loaded",
-      health,
-      ms: Math.round(performance.now() - started),
-    }
-  } catch {
-    return { kind: "error", message: "Could not reach the API." }
-  }
-}
+import { useHealth } from "@/lib/use-health"
+import { cn } from "@/lib/utils"
 
 function Row({
+  icon: Icon,
   name,
   ok,
   detail,
 }: {
+  icon: typeof ServerIcon
   name: string
   ok: boolean | null
-  detail: string
+  detail: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2">
-      <div className="min-w-0">
+    <div className="flex items-center gap-4 py-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
         <p className="font-medium">{name}</p>
-        <p className="truncate text-xs text-muted-foreground">{detail}</p>
+        <div className="truncate text-xs text-muted-foreground">{detail}</div>
       </div>
-      {ok === null ? (
-        <Badge variant="outline">…</Badge>
-      ) : ok ? (
-        <Badge variant="secondary">ok</Badge>
-      ) : (
-        <Badge variant="destructive">down</Badge>
-      )}
+      <span
+        className={cn(
+          "flex items-center gap-2 text-xs font-medium",
+          ok === null
+            ? "text-muted-foreground"
+            : ok
+              ? "text-emerald-700 dark:text-emerald-300"
+              : "text-destructive"
+        )}
+      >
+        <Dot
+          tone={ok === null ? "muted" : ok ? "success" : "destructive"}
+          pulse={!!ok}
+        />
+        {ok === null ? "Checking" : ok ? "Operational" : "Down"}
+      </span>
     </div>
   )
 }
 
 export function StackStatus() {
-  const [state, setState] = useState<State>({ kind: "loading" })
-
-  useEffect(() => {
-    let cancelled = false
-    fetchHealth().then((next) => {
-      if (!cancelled) setState(next)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const refresh = useCallback(async () => {
-    setState({ kind: "loading" })
-    setState(await fetchHealth())
-  }, [])
-
-  const health = state.kind === "loaded" ? state.health : null
+  const health = useHealth()
+  const report = health.kind === "loaded" ? health.data : null
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Local stack</CardTitle>
+        <CardTitle>Services</CardTitle>
         <CardDescription>
-          Browser → Next.js → FastAPI → lab Postgres and native Ollama
+          Browser → Next.js → FastAPI → Postgres and Ollama
         </CardDescription>
         <CardAction>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={refresh}
-            aria-label="Refresh"
-          >
-            <RefreshCwIcon />
+          <Button variant="outline" size="sm" onClick={health.refresh}>
+            <RefreshCwIcon
+              className={cn(health.kind === "loading" && "animate-spin")}
+            />
+            Refresh
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="divide-y">
         <Row
-          name="FastAPI"
-          ok={state.kind === "loading" ? null : state.kind === "loaded"}
+          icon={ServerIcon}
+          name="API (FastAPI)"
+          ok={health.kind === "loading" ? null : health.kind === "loaded"}
           detail={
-            state.kind === "loaded"
-              ? `/api/v1/health answered in ${state.ms} ms`
-              : state.kind === "error"
-                ? state.message
-                : "checking…"
+            health.kind === "loaded"
+              ? `/api/v1/health answered in ${health.ms} ms`
+              : health.kind === "error"
+                ? health.message
+                : "Checking…"
           }
         />
         <Row
-          name="Postgres + pgvector"
-          ok={health ? health.database.ok : null}
+          icon={DatabaseIcon}
+          name="Database (Postgres + pgvector)"
+          ok={report ? report.database.ok : null}
           detail={
-            health
-              ? (health.database.error ??
-                `pgvector ${health.database.pgvector}`)
+            report
+              ? (report.database.error ??
+                `pgvector ${report.database.pgvector}`)
               : "—"
           }
         />
         <Row
-          name="Ollama"
-          ok={health ? health.ollama.ok : null}
+          icon={BrainCircuitIcon}
+          name="AI models (Ollama)"
+          ok={report ? report.ollama.ok : null}
           detail={
-            health
-              ? (health.ollama.error ??
-                (health.ollama.missing.length
-                  ? `missing: ${health.ollama.missing.join(", ")}`
-                  : health.ollama.models.join(", ") +
-                    (health.ollama.optional_missing.length
-                      ? ` (OCR off: ${health.ollama.optional_missing.join(", ")} not pulled)`
+            report
+              ? (report.ollama.error ??
+                (report.ollama.missing.length
+                  ? `Missing: ${report.ollama.missing.join(", ")}`
+                  : report.ollama.models.join(" · ") +
+                    (report.ollama.optional_missing.length
+                      ? ` (OCR off: ${report.ollama.optional_missing.join(", ")} not pulled)`
                       : "")))
               : "—"
           }

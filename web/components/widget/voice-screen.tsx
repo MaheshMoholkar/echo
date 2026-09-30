@@ -16,7 +16,7 @@ import {
 } from "@pipecat-ai/client-react"
 import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport"
 import {
-  LoaderIcon,
+  BotIcon,
   MessageSquareTextIcon,
   MicIcon,
   MicOffIcon,
@@ -26,7 +26,13 @@ import {
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { BackHeader } from "@/components/widget/screens"
+import { Spinner } from "@/components/ui/spinner"
+import { Bubble } from "@/components/widget/chat-screen"
+import {
+  AssistantAvatar,
+  BackHeader,
+  PoweredBy,
+} from "@/components/widget/screens"
 import { cn } from "@/lib/utils"
 
 // speaking: the words heard so far of the piece the bot is saying.
@@ -41,6 +47,7 @@ type CallState = "idle" | "connecting" | "live" | "ended" | "failed"
  */
 export function VoiceScreen(props: {
   session: string
+  orgName: string
   conversationId: string
   onBack: () => void
   onChat: () => void
@@ -72,11 +79,13 @@ export function VoiceScreen(props: {
 
 function VoiceCall({
   session,
+  orgName,
   conversationId,
   onBack,
   onChat,
 }: {
   session: string
+  orgName: string
   conversationId: string
   onBack: () => void
   onChat: () => void
@@ -121,9 +130,7 @@ function VoiceCall({
         status === "completed"
           ? { role: "bot", text: `${done} ${heard}`.trim() }
           : { role: "bot", text: done, speaking: heard }
-      return last?.role === "bot"
-        ? [...all.slice(0, -1), line]
-        : [...all, line]
+      return last?.role === "bot" ? [...all.slice(0, -1), line] : [...all, line]
     })
   })
 
@@ -149,12 +156,13 @@ function VoiceCall({
     }
   }
 
+  const live = state === "live"
   const status =
     state === "idle"
       ? "Talk to our assistant"
       : state === "connecting"
         ? "Connecting…"
-        : state === "live"
+        : live
           ? botSpeaking
             ? "Speaking…"
             : userSpeaking
@@ -166,84 +174,122 @@ function VoiceCall({
 
   return (
     <>
-      <BackHeader title="Voice call" onBack={onBack} />
-      <div className="flex flex-col items-center gap-3 border-b bg-background p-6">
-        <div
-          className={cn(
-            "flex h-20 w-full items-center justify-center rounded-xl bg-muted",
-            botSpeaking && "ring-2 ring-primary/40"
+      <BackHeader
+        title={orgName}
+        subtitle={live ? "On a call" : "Voice call"}
+        onBack={onBack}
+        avatar={<AssistantAvatar online={live} glass className="size-9" />}
+      />
+
+      <div className="flex shrink-0 flex-col items-center gap-3 border-b px-6 pt-8 pb-6">
+        <div className="relative flex size-24 items-center justify-center">
+          {live && (
+            <>
+              <span
+                className={cn(
+                  "absolute inset-0 rounded-full bg-primary/20 transition-transform duration-500",
+                  botSpeaking ? "scale-125 animate-pulse" : "scale-100"
+                )}
+              />
+              <span
+                className={cn(
+                  "absolute inset-0 rounded-full ring-2 transition-all",
+                  userSpeaking
+                    ? "scale-110 ring-emerald-400"
+                    : "ring-transparent"
+                )}
+              />
+            </>
           )}
-        >
-          {state === "live" ? (
-            <VoiceVisualizer
-              participantType="bot"
-              barColor="currentColor"
-              backgroundColor="transparent"
-              barCount={9}
-              barWidth={6}
-              barGap={6}
-              barMaxHeight={48}
-            />
-          ) : state === "connecting" ? (
-            <LoaderIcon className="animate-spin text-muted-foreground" />
-          ) : (
-            <PhoneIcon className="text-muted-foreground" />
-          )}
+          <span className="relative flex size-20 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-primary/30">
+            {state === "connecting" ? (
+              <Spinner className="size-7" />
+            ) : (
+              <BotIcon className="size-8" />
+            )}
+          </span>
         </div>
-        <p className="text-sm font-medium">{status}</p>
+        <div className="grid justify-items-center gap-1">
+          <p className="font-semibold">{status}</p>
+          <div className="flex h-6 items-center text-primary">
+            {live ? (
+              <VoiceVisualizer
+                participantType="bot"
+                barColor="currentColor"
+                backgroundColor="transparent"
+                barCount={11}
+                barWidth={3}
+                barGap={3}
+                barMaxHeight={22}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {state === "idle"
+                  ? "Ask anything, the way you'd ask a person."
+                  : state === "ended"
+                    ? "The transcript is saved in this conversation."
+                    : ""}
+              </p>
+            )}
+          </div>
+        </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-4 text-sm">
+      <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
         {lines.length === 0 && (
-          <p className="text-center text-xs text-muted-foreground">
-            The conversation will appear here.
+          <p className="my-auto text-center text-xs text-muted-foreground">
+            Live captions of the call will appear here.
           </p>
         )}
         {lines.map((line, index) => (
-          <p
+          <Bubble
             key={index}
-            className={cn(
-              "max-w-[85%] rounded-2xl px-3 py-2",
-              line.role === "user"
-                ? "self-end bg-primary text-primary-foreground"
-                : "self-start border bg-background"
-            )}
-          >
-            {[line.text, line.speaking].filter(Boolean).join(" ")}
-          </p>
+            message={{
+              role: line.role === "user" ? "customer" : "assistant",
+              content: [line.text, line.speaking].filter(Boolean).join(" "),
+            }}
+          />
         ))}
       </div>
 
-      <div className="flex gap-2 border-t bg-background p-3">
-        {state === "live" || state === "connecting" ? (
-          <>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label={isMicEnabled ? "Mute" : "Unmute"}
-              onClick={() => enableMic(!isMicEnabled)}
-              disabled={state !== "live"}
-            >
-              {isMicEnabled ? <MicIcon /> : <MicOffIcon />}
+      <div className="shrink-0 border-t px-4 pt-4">
+        <div className="flex items-center justify-center gap-4">
+          {live || state === "connecting" ? (
+            <>
+              <Button
+                variant="outline"
+                size="icon-lg"
+                className="size-12 rounded-full"
+                aria-label={isMicEnabled ? "Mute" : "Unmute"}
+                onClick={() => enableMic(!isMicEnabled)}
+                disabled={!live}
+              >
+                {isMicEnabled ? <MicIcon /> : <MicOffIcon />}
+              </Button>
+              <Button
+                size="icon-lg"
+                className="size-14 rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 hover:bg-red-700"
+                aria-label="End call"
+                onClick={() => client?.disconnect()}
+              >
+                <PhoneOffIcon className="size-5" />
+              </Button>
+            </>
+          ) : state === "ended" ? (
+            <Button className="h-11 flex-1 rounded-full" onClick={onChat}>
+              <MessageSquareTextIcon /> Continue in chat
             </Button>
+          ) : (
             <Button
-              variant="destructive"
-              className="flex-1"
-              onClick={() => client?.disconnect()}
+              className="h-11 flex-1 rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700"
+              onClick={start}
             >
-              <PhoneOffIcon /> End call
+              <PhoneIcon /> Start call
             </Button>
-          </>
-        ) : state === "ended" ? (
-          <Button variant="outline" className="flex-1" onClick={onChat}>
-            <MessageSquareTextIcon /> Continue in chat
-          </Button>
-        ) : (
-          <Button className="flex-1" onClick={start}>
-            <PhoneIcon /> Start call
-          </Button>
-        )}
+          )}
+        </div>
+        <PoweredBy />
       </div>
     </>
   )
