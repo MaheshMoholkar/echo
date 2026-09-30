@@ -1,0 +1,134 @@
+"""Kokoro on the Mac's GPU (MLX) instead of the CPU (ONNX).
+
+Same model (Kokoro-82M), same voices, same phonemes: kokoro-onnx's espeak-ng
+phonemizer turns the text into phonemes as before, and only the neural
+network moves to the GPU, through mlx-audio. mlx-audio's own text front end
+(misaki) would pull in spaCy, and isn't needed.
+
+Measured on the mini while the LLM was generating (as it is during a reply):
+
+    "Sure."                                  0.56 s on the CPU → 0.11 s
+    "Delivery usually takes three to five…"  1.71 s → 0.52 s
+"""
+
+import asyncio
+from collections.abc import AsyncGenerator
+from concurrent.futures import ThreadPoolExecutor
+from functools import cache
+from pathlib import Path
+
+import mlx.core as mx
+import numpy as np
+from kokoro_onnx.chunker import split_phonemes
+from kokoro_onnx.tokenizer import Tokenizer
+from mlx_audio.tts.utils import load_model
+from pipecat.audio.utils import create_stream_resampler
+from pipecat.frames.frames import ErrorFrame, Frame, TTSAudioRawFrame
+from pipecat.services.kokoro.tts import KokoroTTSService, language_to_kokoro_language
+from pipecat.services.tts_service import TTSService
+from pipecat.transcriptions.language import Language
+
+MODEL = "mlx-community/Kokoro-82M-bf16"
+MODEL_FILES = ["config.json", "kokoro-v1_0.safetensors"]  # 312 MB; not its voices
+SAMPLE_RATE = 24_000
+
+# The model pads each piece with ~0.35 s of silence before the speech and
+# ~0.5 s after. Kept, every reply would start 0.35 s later.
+SILENCE = 0.01  # amplitude below which a sample counts as silence
+KEEP_BEFORE = 0.03  # seconds of it kept before the speech
+KEEP_AFTER = 0.1  # and after (a breath between pieces)
+
+# All MLX work for Kokoro happens on this one thread, loading included.
+mlx_thread = ThreadPoolExecutor(max_workers=1, thread_name_prefix="kokoro-mlx")
+
+# MLX keeps freed GPU buffers to reuse them, by default up to most of the
+# Mac's memory. Every piece of speech has a different length, so none fit
+# the next one exactly: the cache grew to 7 GB in ten sentences and the mini
+# started swapping (Whisper 5 s instead of 0.9 s). Capped, pieces are as
+# fast and steadier. Process-wide: Whisper's buffers count too.
+CACHE_LIMIT = 256 * 1024**2
+
+
+def limit_cache() -> None:
+    mx.set_cache_limit(CACHE_LIMIT)
+
+
+@cache
+def model():
+    return load_model(MODEL, allow_patterns=MODEL_FILES)
+
+
+@cache
+def tokenizer() -> Tokenizer:
+    return Tokenizer()
+
+
+@cache
+def voice_pack(voices_path: Path, voice: str) -> np.ndarray:
+    """A voice: one style vector per phoneme count (510 × 1 × 256)."""
+    return np.load(voices_path)[voice]
+
+
+def trim(audio: np.ndarray) -> np.ndarray:
+    loud = np.flatnonzero(np.abs(audio) > SILENCE)
+    if not len(loud):
+        return audio[:0]
+    start = max(0, loud[0] - int(KEEP_BEFORE * SAMPLE_RATE))
+    return audio[start : loud[-1] + 1 + int(KEEP_AFTER * SAMPLE_RATE)]
+
+
+def synthesize(text: str, pack: np.ndarray, speed: float = 1.0) -> np.ndarray:
+    """Speech for `text` as 24 kHz float samples. Blocking: run it on
+    `mlx_thread`."""
+    phonemes = tokenizer().phonemize(text, "en-us")
+    pieces = []
+    # The model reads at most 510 phonemes at a time (~400 characters).
+    for batch in split_phonemes(phonemes):
+        style = mx.array(pack[len(batch) - 1])
+        pieces.append(trim(np.array(model()(batch, style, speed=speed)).reshape(-1)))
+    return np.concatenate(pieces) if pieces else np.zeros(0, dtype=np.float32)
+
+
+class KokoroMLXTTSService(TTSService):
+    """Pipecat's Kokoro service with the synthesis done by `synthesize`."""
+
+    Settings = KokoroTTSService.Settings
+
+    def __init__(self, *, voices_path: Path, settings: Settings, **kwargs) -> None:
+        defaults = self.Settings(
+            model=MODEL, voice=None, language=Language.EN, speed=1.0
+        )
+        defaults.apply_update(settings)
+        super().__init__(
+            push_start_frame=True, push_stop_frames=True, settings=defaults, **kwargs
+        )
+        self._voices_path = voices_path
+        self._resampler = create_stream_resampler()
+
+    def can_generate_metrics(self) -> bool:
+        return True
+
+    def language_to_service_language(self, language: Language) -> str:
+        return language_to_kokoro_language(language)
+
+    async def run_tts(self, text: str, context_id: str) -> AsyncGenerator[Frame]:
+        try:
+            await self.start_tts_usage_metrics(text)
+            pack = voice_pack(self._voices_path, self._settings.voice)
+            audio = await asyncio.get_running_loop().run_in_executor(
+                mlx_thread, synthesize, text, pack, self._settings.speed
+            )
+            await self.stop_ttfb_metrics()
+            pcm = (audio * 32767).astype(np.int16).tobytes()
+            yield TTSAudioRawFrame(
+                audio=await self._resampler.resample(
+                    pcm, SAMPLE_RATE, self.sample_rate
+                ),
+                sample_rate=self.sample_rate,
+                num_channels=1,
+                context_id=context_id,
+            )
+        except Exception as exc:  # noqa: BLE001 - reported to the pipeline
+            yield ErrorFrame(error=f"Kokoro (MLX) failed: {exc}")
+        finally:
+            await self.stop_ttfb_metrics()

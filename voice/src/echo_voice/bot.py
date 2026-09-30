@@ -31,7 +31,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.processors.aggregators.llm_text_processor import LLMTextProcessor
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.ollama.llm import OLLamaLLMService
 from pipecat.services.whisper.stt import MLXModel, WhisperSTTServiceMLX
 from pipecat.transcriptions.language import Language
@@ -44,29 +43,31 @@ from echo_api import agent, chat, knowledge
 from echo_api.config import get_settings
 from echo_api.db import SessionLocal
 from echo_api.models import Conversation, MessageRole
+from echo_voice import kokoro_mlx
+from echo_voice.kokoro_mlx import KokoroMLXTTSService
 from echo_voice.prompts import VOICE_INSTRUCTIONS, VOICE_RESULTS_NOTE
 from echo_voice.timing import ShortOpeningAggregator, SmartTurnWithAllTranscripts
 
-# int8: 92 MB instead of 326 MB (fp32), and faster on the CPU, where Kokoro
-# runs; that leaves the GPU to Whisper and the LLM. `make voice-models`
-# downloads it (Pipecat would fetch the fp32 file on its own).
-KOKORO_DIR = Path.home() / ".cache" / "pipecat" / "kokoro-onnx"
-KOKORO_MODEL = KOKORO_DIR / "kokoro-v1.0.int8.onnx"
-KOKORO_VOICES = KOKORO_DIR / "voices-v1.0.bin"
+# Kokoro's voices (kokoro-onnx's file; `make voice-models` downloads it).
+# The model itself runs on the GPU: echo_voice.kokoro_mlx.
+KOKORO_VOICES = Path.home() / ".cache" / "pipecat" / "kokoro-onnx" / "voices-v1.0.bin"
 KOKORO_VOICE = "af_heart"
 
 WHISPER_MODEL = MLXModel.LARGE_V3_TURBO_Q4  # ~460 MB, close to large-v3 accuracy
 
 
 def warm_up() -> None:
-    """Load Whisper before the first call. MLX Whisper loads its model on first
-    use and keeps it for the life of the process, so without this the first
-    caller's first sentence waited for the load (3.7 s for a 2 s question)."""
+    """Load Whisper and Kokoro before the first call. Both load their model on
+    first use and keep it for the life of the process, so without this the
+    first caller waited for the loads (3.7 s for Whisper alone)."""
     import mlx_whisper
     import numpy as np
 
+    kokoro_mlx.limit_cache()
     silence = np.zeros(16_000, dtype=np.float32)  # one second at 16 kHz
     mlx_whisper.transcribe(silence, path_or_hf_repo=WHISPER_MODEL, language="en")
+    pack = kokoro_mlx.voice_pack(KOKORO_VOICES, KOKORO_VOICE)
+    kokoro_mlx.mlx_thread.submit(kokoro_mlx.synthesize, "Hello.", pack).result()
 
 
 async def warm_up_call(organization_id: str, history: list[dict[str, str]]) -> None:
@@ -216,10 +217,9 @@ async def run_bot(
             extra={"reasoning_effort": "none"},
         ),
     )
-    tts = KokoroTTSService(
-        model_path=str(KOKORO_MODEL),
-        voices_path=str(KOKORO_VOICES),
-        settings=KokoroTTSService.Settings(voice=KOKORO_VOICE),
+    tts = KokoroMLXTTSService(
+        voices_path=KOKORO_VOICES,
+        settings=KokoroMLXTTSService.Settings(voice=KOKORO_VOICE),
     )
 
     context = LLMContext(messages=history)

@@ -5,6 +5,7 @@ description = "Echo voice bot: Pipecat with local Whisper, Ollama and Kokoro"
 requires-python = ">=3.13"
 dependencies = [
     "echo-api",
+    "mlx-audio>=0.5.7",
     "pipecat-ai[kokoro,mlx-whisper,silero,webrtc,whisper]>=1.12.0",
 ]
 

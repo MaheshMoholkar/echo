@@ -24,11 +24,10 @@ auth-migrate:     ## create/update Better Auth's tables in the `auth` schema
 	cd web && $(LOAD_ENV) psql "$$DATABASE_URL" -qc 'create schema if not exists auth'
 	cd web && $(LOAD_ENV) pnpm dlx auth@1.7.6 migrate --config lib/auth.ts --yes
 
-voice-models:     ## Kokoro int8 (92 MB) + voices, Whisper large-v3-turbo q4 (~460 MB); resumable
+voice-models:     ## Kokoro voices + MLX weights (~340 MB), Whisper large-v3-turbo q4 (~460 MB); resumable
 	mkdir -p $(KOKORO_DIR)
-	curl -fL -C - -o $(KOKORO_DIR)/kokoro-v1.0.int8.onnx $(KOKORO_RELEASE)/kokoro-v1.0.int8.onnx
 	curl -fL -C - -o $(KOKORO_DIR)/voices-v1.0.bin $(KOKORO_RELEASE)/voices-v1.0.bin
-	cd voice && uv run python -c "from huggingface_hub import snapshot_download as d; print(d('mlx-community/whisper-large-v3-turbo-q4'))"
+	cd voice && uv run python -c "from huggingface_hub import snapshot_download as d; from echo_voice import kokoro_mlx as k; print(d(k.MODEL, allow_patterns=k.MODEL_FILES)); print(d('mlx-community/whisper-large-v3-turbo-q4'))"
 
 dev:              ## run web (:3000), api (:8000) and the voice bot (:8001) together
 	$(MAKE) -j3 web api voice

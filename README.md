@@ -164,14 +164,15 @@ contact session checked like the chat); audio flows browser ⇄ bot directly.
 
     mic → WebRTC → Silero VAD + Smart Turn v3 → MLX Whisper (large-v3-turbo q4)
         → knowledge search (same pipeline RAG as the chat) → Ollama qwen3.5:4b
-        → Kokoro (int8, CPU) → WebRTC → speaker
+        → Kokoro (MLX, on the GPU) → WebRTC → speaker
 
 - Each call saves its transcript to the conversation, so the team sees voice
   calls in the inbox; "Continue in chat" carries on in the same thread.
 - Barge-in works: talking over the bot stops it and it answers the new
   question. A conversation the team has taken over refuses calls (409).
-- `make voice-models` fetches Kokoro int8 (92 MB) and Whisper (~460 MB);
-  the server loads Whisper at startup (first transcription 3.7 s → 0.86 s).
+- `make voice-models` fetches Kokoro (312 MB of MLX weights + the voices)
+  and Whisper (~460 MB); the server loads both at startup (Whisper's first
+  transcription went from 3.7 s to 0.86 s).
 
 ### Where a voice reply's wait goes
 
@@ -181,16 +182,18 @@ voice), cuts in on the last answer, and times each wait from the moment it
 stops talking to the first reply audio. It gets the bot's own events over
 the RTVI data channel, as the widget does, so every wait is broken down:
 
-    WAIT  3.48 s = turn end 0.94 + search 0.03 + first token 1.54
-                   + chunk written 0.06 + Kokoro + audio 0.91
+    WAIT  3.52 s = turn end 1.09 + search 0.03 + first token 1.35
+                   + chunk written 0.32 + Kokoro + audio 0.74
 
 - **Turn end ~1 s**: VAD waits 0.2 s of silence, then Smart Turn v3 judges
   the turn complete and Whisper transcribes it (~0.85 s).
 - **First token ~1.5 s**: the model reads the ~700-token prompt. The
   instructions and history are cached by Ollama; the ~450 new tokens are
   mostly the knowledge-base passages.
-- **Kokoro**: turns a whole piece of text into audio before playing any of
-  it, ~0.4 s + ~0.35 s per second of speech on the CPU. So the reply is cut
+- **Chunk written ~0.3 s**: the model writes the first piece of the reply.
+- **Kokoro ~0.7 s**: it turns a whole piece of text into audio before
+  playing any of it (~0.1 s + ~0.07 s per second of speech on the GPU,
+  about twice that while the model is still writing). So the reply is cut
   into short pieces at the start (`echo_voice.timing`): at commas until
   ~40 characters are queued, whole sentences after that.
 
@@ -198,9 +201,10 @@ What changed the numbers (all waits after the caller stops):
 
 | | before | after |
 |---|---|---|
-| First question, model unloaded | 12.2 s | 3.4 s |
-| Later questions | 4.5-7.2 s | 3.5-3.7 s |
-| A question spoken in two parts while the bot talks | 9.0 s | 3.5 s |
+| First question, model unloaded | 12.2 s | 3.7 s |
+| Later questions | 4.5-7.2 s | 3.5-3.8 s |
+| A question spoken in two parts while the bot talks | 9.0 s | 4.0 s |
+| Longest pause inside a reply | up to 2 s | 0.5 s |
 
 - **Warm-up during the greeting** (`warm_up_call`): loads the chat and
   embedding models if Ollama unloaded them, and has the model read the
@@ -211,12 +215,23 @@ What changed the numbers (all waits after the caller stops):
   had started the second, and Pipecat ended the turn without the second:
   the model answered "sorry one more thing", then got interrupted.
 - **Short first pieces** (`ShortOpeningAggregator`), above.
+- **Kokoro on the GPU** (`echo_voice.kokoro_mlx`): the same model and
+  voices through mlx-audio, 3-6x faster than ONNX on the CPU ("Sure." 0.56 s
+  → 0.11 s, an 11-word sentence 1.7 s → 0.5 s, with the LLM busy). Its
+  phonemes still come from kokoro-onnx's espeak (mlx-audio's own would pull
+  in spaCy), and the ~0.35 s of silence it pads each piece with is trimmed.
+  MLX keeps freed GPU buffers for reuse, by default without a practical
+  limit: after ten sentences it held 7 GB and the mini was swapping (one
+  answer took 24 s). The voice server caps that cache at 256 MB.
+- The prompt no longer asks for an opener ("Sure."): that was a workaround
+  for slow Kokoro, and made every reply sound the same.
 
-Left: replies told to "open with a few words" start sooner ("Sure." at
-~3.5 s instead of a full sentence at ~5 s), but a long sentence with no
-comma after it leaves a 1-2 s pause while Kokoro works. A faster TTS (Kokoro
-on the GPU, e.g. via MLX) would remove that. A sentence cut off by barge-in
-isn't saved: the transcript has the sentences that were fully spoken.
+Left: most of the wait is now Whisper (~0.85 s) and the model reading the
+knowledge-base passages (~1.5 s; fewer or shorter passages would help). A
+sentence cut off by barge-in isn't saved: the transcript only has what was
+fully spoken, so an answer interrupted in its first sentence leaves no bot
+line. Per-word timings (Kokoro knows each phoneme's duration) would let
+Pipecat keep exactly the words that were heard.
 
 ## How auth works
 

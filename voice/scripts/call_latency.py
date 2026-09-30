@@ -36,10 +36,10 @@ import numpy as np
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription
 from aiortc.mediastreams import MediaStreamError
 from av import AudioFrame
-from kokoro_onnx import Kokoro
 
 from echo_api.config import get_settings
-from echo_voice.bot import KOKORO_MODEL, KOKORO_VOICES
+from echo_voice import kokoro_mlx
+from echo_voice.bot import KOKORO_VOICES
 
 API = "http://127.0.0.1:8000/v1/public"
 VOICE = "http://127.0.0.1:8001"
@@ -55,7 +55,7 @@ QUESTIONS = [
 INTERRUPTION = "Sorry, one more thing. When is your support team available?"
 INTERRUPT_AFTER = 1.5  # seconds of the bot's reply before the caller cuts in
 
-RATE = 24_000  # Kokoro's rate; aiortc resamples to Opus's 48 kHz
+RATE = kokoro_mlx.SAMPLE_RATE  # aiortc resamples to Opus's 48 kHz
 FRAME = RATE // 50  # 20 ms, like a browser
 LOUD = 300.0  # RMS of a received int16 frame above which it counts as speech
 QUIET = 3.0  # seconds of silence that end a reply
@@ -157,9 +157,9 @@ class Events:
         return None
 
 
-def speak(kokoro: Kokoro, text: str) -> np.ndarray:
-    samples, rate = kokoro.create(text, voice=CALLER_VOICE)
-    assert rate == RATE
+def speak(text: str) -> np.ndarray:
+    pack = kokoro_mlx.voice_pack(KOKORO_VOICES, CALLER_VOICE)
+    samples = kokoro_mlx.mlx_thread.submit(kokoro_mlx.synthesize, text, pack).result()
     return (samples * 32767).astype(np.int16)
 
 
@@ -242,8 +242,8 @@ def report(
 
 
 async def main(organization_id: str, cold: bool) -> None:
-    kokoro = Kokoro(str(KOKORO_MODEL), str(KOKORO_VOICES))
-    speech = [speak(kokoro, q) for q in [*QUESTIONS, INTERRUPTION]]
+    kokoro_mlx.limit_cache()
+    speech = [speak(q) for q in [*QUESTIONS, INTERRUPTION]]
 
     async with httpx.AsyncClient(timeout=30) as http:
         response = await http.post(
