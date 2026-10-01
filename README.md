@@ -69,6 +69,24 @@ Open http://localhost:3000 and sign in as `demo@example.com` /
 
 `make seed` prints the demo organization's id for the last three.
 
+### Voice bot on another machine
+
+The speech models can run on a second Apple Silicon machine, so the one with
+the browser needs none of them. Both need the repo and a `.env` with the same
+`DATABASE_URL`; the voice machine's `OLLAMA_BASE_URL` is Ollama as seen from
+there.
+
+| Machine | `.env` | Commands |
+|---|---|---|
+| voice | `VOICE_HOST=<its address on a network both share>` | `make setup-voice`, then `make voice` |
+| web | `VOICE_URL=http://<that address>:8001` | `make setup-app`, then `make dev-app` |
+
+Only the call setup goes through `VOICE_URL`; the audio flows browser ⇄ bot
+directly, so the browser must reach that address too. Use a private network
+(a LAN or a VPN): the bot's port is plain HTTP. Keep opening the app at
+`localhost`. `make voice-latency` runs on the voice machine, with `make api`
+running there.
+
 ## How it works
 
 ### Chat

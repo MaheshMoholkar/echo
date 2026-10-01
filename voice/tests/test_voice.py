@@ -3,12 +3,14 @@ exercised end to end in a browser, not here."""
 
 import httpx
 import pytest
+import uvicorn
 from pipecat.frames.frames import LLMContextFrame
 from pipecat.processors.aggregators.llm_context import LLMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from echo_api import knowledge
 from echo_api.models import ContactSession, Conversation, ConversationStatus
+from echo_voice import ServerSettings, main
 from echo_voice.bot import PASSAGES, KnowledgeRetriever, history_messages
 
 HIT = knowledge.SearchHit(
@@ -134,3 +136,26 @@ async def test_offer_refused_once_the_team_has_the_conversation(
     headers = {"X-Contact-Session": str(contact.id)}
     response = await client.post("/offer", json=offer(conversation.id), headers=headers)
     assert response.status_code == 409
+
+
+# --- where the bot listens -----------------------------------------------------
+
+
+def test_bot_listens_on_this_machine_only_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("VOICE_HOST", raising=False)
+    monkeypatch.delenv("VOICE_PORT", raising=False)
+    settings = ServerSettings(_env_file=None)  # the defaults, whatever .env says
+    assert (settings.host, settings.port) == ("127.0.0.1", 8001)
+
+
+def test_bot_listens_where_the_environment_says(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    served: dict[str, object] = {}
+    monkeypatch.setenv("VOICE_HOST", "192.0.2.10")
+    monkeypatch.setenv("VOICE_PORT", "9001")
+    monkeypatch.setattr(uvicorn, "run", lambda app, **where: served.update(where))
+    main()
+    assert served == {"host": "192.0.2.10", "port": 9001}

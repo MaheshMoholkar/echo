@@ -38,11 +38,12 @@ from aiortc.mediastreams import MediaStreamError
 from av import AudioFrame
 
 from echo_api.config import get_settings
-from echo_voice import kokoro_mlx
+from echo_voice import ServerSettings, kokoro_mlx
 from echo_voice.bot import KOKORO_VOICES
 
 API = "http://127.0.0.1:8000/v1/public"
-VOICE = "http://127.0.0.1:8001"
+SERVER = ServerSettings()  # the bot is called where it listens
+VOICE = f"http://{SERVER.host}:{SERVER.port}"
 CALLER_VOICE = "am_michael"  # the bot speaks as af_heart
 
 QUESTIONS = [

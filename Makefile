@@ -8,13 +8,19 @@ LOAD_ENV := set -a; [ -f ../.env ] && . ../.env; set +a;
 KOKORO_DIR := $(HOME)/.cache/pipecat/kokoro-onnx
 KOKORO_RELEASE := https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
 
-.PHONY: setup migrate auth-migrate voice-models dev web api voice test check seed eval voice-eval voice-latency
+.PHONY: setup setup-app setup-voice migrate auth-migrate voice-models dev dev-app web api voice test check seed eval voice-eval voice-latency
 
 setup:            ## install deps, create tables, fetch voice models
+	$(MAKE) setup-app setup-voice
+
+setup-app:        ## web + api only, when the voice bot runs on another machine (VOICE_URL)
 	cd api && uv sync
-	cd voice && uv sync
 	cd web && pnpm install
-	$(MAKE) auth-migrate migrate voice-models
+	$(MAKE) auth-migrate migrate
+
+setup-voice:      ## the voice bot only: its deps and models
+	cd voice && uv sync
+	$(MAKE) voice-models
 
 migrate:          ## apply app migrations (Alembic, `public` schema)
 	cd api && uv run alembic upgrade head
@@ -31,13 +37,16 @@ voice-models:     ## Kokoro voices + MLX weights (~340 MB), Whisper large-v3-tur
 dev:              ## run web (:3000), api (:8000) and the voice bot (:8001) together
 	$(MAKE) -j3 web api voice
 
+dev-app:          ## web + api only, when the voice bot runs on another machine (VOICE_URL)
+	$(MAKE) -j2 web api
+
 web:
 	cd web && $(LOAD_ENV) pnpm dev
 
 api:
 	cd api && uv run fastapi dev src/echo_api/main.py --host 127.0.0.1 --port 8000
 
-voice:            ## the voice bot (no auto-reload: its models take seconds to load)
+voice:            ## the voice bot on VOICE_HOST:VOICE_PORT (no auto-reload: its models take seconds to load)
 	cd voice && uv run echo-voice
 
 seed:             ## a demo login, organization and the sample knowledge base (with make dev running)
