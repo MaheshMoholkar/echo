@@ -56,11 +56,11 @@ export function ConversationList() {
 
   return (
     <>
-      <div className="grid gap-3 border-b p-3">
-        <div className="flex items-center justify-between px-1">
-          <h1 className="font-semibold">Conversations</h1>
+      <div className="grid gap-3 p-3 pb-2">
+        <div className="flex items-baseline justify-between px-1">
+          <h1 className="title-section">Conversations</h1>
           {stats && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[13px]/4.5 text-muted-foreground tabular-nums">
               {count("all")} total
             </span>
           )}
@@ -68,12 +68,13 @@ export function ConversationList() {
         <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
           <TabsList className="w-full">
             {FILTERS.map((f) => (
-              <TabsTrigger key={f.value} value={f.value} className="text-xs">
+              <TabsTrigger key={f.value} value={f.value}>
                 {f.label}
                 {f.value === "escalated" && !!stats?.escalated && (
                   <CountBadge
                     count={stats.escalated}
-                    className="h-4 min-w-4 bg-warning/20 px-1 text-[10px] text-amber-700 dark:text-amber-300"
+                    waiting
+                    className="h-4.5 min-w-4.5 px-1"
                   />
                 )}
               </TabsTrigger>
@@ -165,31 +166,31 @@ function Items({ status }: { status?: ConversationStatus }) {
     )
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2 pt-1">
       {items.map((item) => {
         const active = pathname === `/conversations/${item.id}`
         return (
           <Link
             key={item.id}
             href={`/conversations/${item.id}`}
+            aria-current={active ? "page" : undefined}
+            // The open conversation is a sheet lifted off the tray.
             className={cn(
-              "flex gap-3 rounded-lg px-3 py-3 transition-colors",
-              active
-                ? "bg-background shadow-xs ring-1 ring-foreground/10"
-                : "hover:bg-muted/70"
+              "flex gap-3 rounded-lg p-3 transition-colors",
+              active ? "bg-card" : "hover:bg-accent"
             )}
           >
             <UserAvatar name={item.contact.name} className="size-9" />
             <div className="grid min-w-0 flex-1 gap-1">
               <div className="flex items-baseline gap-2">
-                <span className="truncate text-sm font-medium">
+                <span className="truncate text-sm font-semibold">
                   {item.contact.name}
                 </span>
                 <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
                   {shortAge(item.updated_at, now)}
                 </span>
               </div>
-              <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+              <p className="line-clamp-2 text-[13px]/4.5 text-muted-foreground">
                 {item.last_message
                   ? who[item.last_message.role] + item.last_message.content
                   : "No messages yet"}

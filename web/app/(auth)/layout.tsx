@@ -1,6 +1,8 @@
-import { BookOpenIcon, BotIcon, MicIcon, UserRoundIcon } from "lucide-react"
+import { BookOpenIcon, MicIcon, UserRoundIcon } from "lucide-react"
 
-import { Logo, LogoMark } from "@/components/logo"
+import { Bubble } from "@/components/bubble"
+import { Echoes, EchoGlyph, Logo } from "@/components/logo"
+import { EchoAvatar } from "@/components/user-avatar"
 
 const features = [
   { icon: BookOpenIcon, text: "Answers from your own documents" },
@@ -15,50 +17,52 @@ export default function AuthLayout({
 }) {
   return (
     <div className="grid min-h-svh lg:grid-cols-[1fr_1.1fr]">
-      <aside className="relative hidden overflow-hidden bg-brand p-10 text-white lg:flex lg:flex-col">
-        <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_at_top_left,black_20%,transparent_70%)]" />
-        <div className="absolute -right-32 -bottom-32 size-96 rounded-full bg-white/10 blur-3xl" />
+      {/* One of the two orange surfaces (the other is the widget's
+          greeting). Everything on it is ink, in both themes. */}
+      <aside className="relative hidden overflow-hidden bg-primary p-10 text-primary-foreground lg:flex lg:flex-col">
+        <Echoes
+          sizes={[200, 360, 520, 680]}
+          className="-right-[352px] -bottom-[270px]"
+        />
         <div className="relative flex items-center gap-2">
-          <LogoMark glass />
-          <span className="text-lg font-semibold tracking-tight">Echo</span>
+          <EchoGlyph className="size-[30px]" />
+          <span className="font-display text-[22px]/7 font-extrabold tracking-[-0.02em]">
+            Echo
+          </span>
         </div>
 
-        <div className="relative my-auto grid max-w-md gap-8 py-10">
+        <div className="relative my-auto grid max-w-[440px] gap-8 py-10">
           <div className="grid gap-4">
-            <h2 className="text-4xl leading-tight font-semibold">
+            <h2 className="title-hero">
               Customer support that answers itself.
             </h2>
-            <p className="text-lg text-white/75">
+            <p className="text-lg/[26px] font-medium">
               An AI agent for your website, grounded in your knowledge base.
             </p>
           </div>
 
           {/* A sample of what customers see. */}
-          <div className="grid gap-3 rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur-sm">
-            <p className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-white px-3.5 py-2 text-sm text-zinc-900">
+          <div className="flex flex-col gap-3 rounded-xl bg-background p-4 text-foreground">
+            <Bubble side="out">
               How long does delivery take within India?
-            </p>
-            <div className="flex max-w-[88%] items-end gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/20">
-                <BotIcon className="size-4" />
-              </span>
-              <p className="rounded-2xl rounded-bl-md bg-white/15 px-3.5 py-2 text-sm">
-                3 to 5 business days. Orders placed before 2 pm IST ship the
-                same day.
-              </p>
-            </div>
-            <p className="pl-9 text-xs text-white/60">
+            </Bubble>
+            <Bubble side="in" avatar={<EchoAvatar />} className="max-w-[88%]">
+              3 to 5 business days. Orders placed before 2 pm IST ship the same
+              day.
+            </Bubble>
+            <p className="pl-9 text-xs text-muted-foreground">
               Answered from your knowledge base in 1.2 s
             </p>
           </div>
 
           <ul className="grid gap-3">
             {features.map((feature) => (
-              <li key={feature.text} className="flex items-center gap-3">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
-                  <feature.icon className="size-4" />
-                </span>
-                <span className="text-sm text-white/90">{feature.text}</span>
+              <li
+                key={feature.text}
+                className="flex items-center gap-3 text-sm font-semibold"
+              >
+                <feature.icon className="size-5" />
+                {feature.text}
               </li>
             ))}
           </ul>

@@ -1,20 +1,13 @@
 "use client"
 
-import {
-  ArrowUpIcon,
-  CheckCircle2Icon,
-  HeadsetIcon,
-  UserRoundIcon,
-} from "lucide-react"
+import { ArrowUpIcon, CheckCircle2Icon, UserRoundIcon } from "lucide-react"
 import { useEffect, useEffectEvent, useRef, useState } from "react"
 
+import { Bubble, Caret, Notice, Typing } from "@/components/bubble"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import {
-  AssistantAvatar,
-  BackHeader,
-  PoweredBy,
-} from "@/components/widget/screens"
+import { EchoAvatar, TeamAvatar } from "@/components/user-avatar"
+import { BackHeader, PoweredBy } from "@/components/widget/screens"
 import {
   ApiError,
   sendMessage,
@@ -31,15 +24,11 @@ const toolNotes: Record<string, string> = {
   resolve_conversation: "Closing the conversation…",
 }
 
-export function TeamAvatar() {
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
-      <HeadsetIcon className="size-3.5" />
-    </span>
-  )
-}
-
-export function Bubble({
+/**
+ * A message as the customer sees it. Their own go out in ink; Echo and the
+ * team come in on a tray, told apart by the avatar and a "Support team" line.
+ */
+export function WidgetMessage({
   message,
   children,
 }: {
@@ -48,66 +37,22 @@ export function Bubble({
 }) {
   if (message.role === "customer")
     return (
-      <p className="max-w-[80%] self-end rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap text-primary-foreground">
+      <Bubble side="out" large>
         {message.content}
-      </p>
+      </Bubble>
     )
   const team = message.role === "operator"
   return (
-    <div className="flex max-w-[88%] items-end gap-2">
-      {team ? <TeamAvatar /> : <AssistantAvatar />}
-      <div className="grid gap-1">
-        {team && (
-          <span className="px-1 text-xs text-muted-foreground">
-            Support team
-          </span>
-        )}
-        <p className="rounded-2xl rounded-bl-md bg-muted px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap">
-          {message.content}
-          {children}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function Typing({ note }: { note: string | null }) {
-  return (
-    <div className="flex items-end gap-2">
-      <AssistantAvatar />
-      <div className="grid gap-1">
-        <span
-          className="flex h-9 w-14 items-center justify-center gap-1 rounded-2xl rounded-bl-md bg-muted"
-          aria-label="Typing"
-        >
-          {[0, 150, 300].map((delay) => (
-            <span
-              key={delay}
-              className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
-              style={{ animationDelay: `${delay}ms` }}
-            />
-          ))}
-        </span>
-        {note && (
-          <span className="px-1 text-xs text-muted-foreground">{note}</span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function Notice({
-  icon: Icon,
-  children,
-}: {
-  icon: typeof HeadsetIcon
-  children: React.ReactNode
-}) {
-  return (
-    <p className="mx-auto my-1 flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-      <Icon className="size-3.5" />
+    <Bubble
+      side="in"
+      large
+      className="max-w-[88%]"
+      avatar={team ? <TeamAvatar /> : <EchoAvatar />}
+      label={team && "Support team"}
+    >
+      {message.content}
       {children}
-    </p>
+    </Bubble>
   )
 }
 
@@ -247,7 +192,7 @@ export function ChatScreen({
               : "AI assistant · Replies instantly"
         }
         onBack={onBack}
-        avatar={<AssistantAvatar online={!closed} glass className="size-9" />}
+        avatar={<EchoAvatar online={!closed} className="size-9" />}
       />
 
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-5">
@@ -255,15 +200,15 @@ export function ChatScreen({
           <Spinner className="mx-auto mt-8 text-muted-foreground" />
         )}
         {conversation?.messages.map((message) => (
-          <Bubble key={message.id} message={message} />
+          <WidgetMessage key={message.id} message={message} />
         ))}
         {streaming !== null &&
           (streaming ? (
-            <Bubble message={{ role: "assistant", content: streaming }}>
-              <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-foreground/40 align-middle" />
-            </Bubble>
+            <WidgetMessage message={{ role: "assistant", content: streaming }}>
+              <Caret />
+            </WidgetMessage>
           ) : (
-            <Typing note={note} />
+            <Typing avatar={<EchoAvatar />} note={note} />
           ))}
         {status === "escalated" && !busy && (
           <Notice icon={UserRoundIcon}>
@@ -287,7 +232,7 @@ export function ChatScreen({
       </div>
 
       <form onSubmit={onSubmit} className="shrink-0 border-t px-3 pt-3">
-        <div className="flex items-center gap-1 rounded-full border bg-background py-1 pr-1 pl-4 shadow-xs transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
+        <div className="flex items-center gap-1 rounded-full border border-input bg-card py-1 pr-1 pl-4 outline-2 outline-offset-2 outline-transparent transition-colors focus-within:border-foreground has-[input:focus-visible]:outline-ring">
           <input
             name="content"
             placeholder={
@@ -297,7 +242,7 @@ export function ChatScreen({
             maxLength={4000}
             disabled={busy || closed || !conversation}
             required
-            className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+            className="h-8 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           />
           <Button
             type="submit"

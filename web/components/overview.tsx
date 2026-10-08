@@ -1,9 +1,7 @@
 "use client"
 
 import {
-  ArrowRightIcon,
   BookOpenIcon,
-  BotIcon,
   CheckCircle2Icon,
   CircleIcon,
   InboxIcon,
@@ -11,6 +9,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+import { EchoGlyph } from "@/components/logo"
 import { Dot, StatusBadge } from "@/components/status"
 import { Button } from "@/components/ui/button"
 import {
@@ -54,20 +53,23 @@ export function Overview({ organizationId }: { organizationId: string }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Stat
           label="Escalated"
           value={stats?.escalated}
-          hint="Waiting for your team"
+          hint={
+            stats?.escalated === 0
+              ? "Nobody is waiting"
+              : "Waiting for your team"
+          }
           icon={UserRoundIcon}
-          tone="bg-warning/15 text-amber-700 dark:text-amber-300"
+          waiting={!!stats?.escalated}
         />
         <Stat
           label="AI handling"
           value={stats?.unresolved}
           hint="Answered by the assistant"
-          icon={BotIcon}
-          tone="bg-primary/10 text-primary"
+          icon={EchoGlyph}
         />
         <Stat
           label="Resolved"
@@ -78,19 +80,17 @@ export function Overview({ organizationId }: { organizationId: string }) {
               : ""
           }
           icon={CheckCircle2Icon}
-          tone="bg-success/12 text-emerald-700 dark:text-emerald-300"
         />
         <Stat
           label="Knowledge base"
           value={documents?.length}
           hint={`${chunks} searchable ${chunks === 1 ? "passage" : "passages"}`}
           icon={BookOpenIcon}
-          tone="bg-sky-500/12 text-sky-700 dark:text-sky-300"
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="pb-2 lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent conversations</CardTitle>
             <CardDescription>
@@ -98,9 +98,7 @@ export function Overview({ organizationId }: { organizationId: string }) {
             </CardDescription>
             <CardAction>
               <Button asChild variant="ghost" size="sm">
-                <Link href="/conversations">
-                  View inbox <ArrowRightIcon />
-                </Link>
+                <Link href="/conversations">View inbox</Link>
               </Button>
             </CardAction>
           </CardHeader>
@@ -129,45 +127,46 @@ function percent(part: number, whole: number) {
   return whole ? `${Math.round((part / whole) * 100)}%` : "0%"
 }
 
+/** One number on a tray. Only the Escalated tile is ever colored: it turns
+ * orange while someone is waiting for a person. */
 function Stat({
   label,
   value,
   hint,
   icon: Icon,
-  tone,
+  waiting,
 }: {
   label: string
   value: number | undefined
   hint: string
-  icon: typeof BotIcon
-  tone: string
+  icon: React.ComponentType<{ className?: string }>
+  waiting?: boolean
 }) {
   return (
-    <Card className="gap-3">
-      <CardHeader>
-        <CardDescription className="font-medium">{label}</CardDescription>
-        <CardAction>
-          <span
-            className={cn(
-              "flex size-8 items-center justify-center rounded-lg",
-              tone
-            )}
-          >
-            <Icon className="size-4" />
-          </span>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="grid gap-1">
-        {value === undefined ? (
-          <Skeleton className="h-9 w-14" />
-        ) : (
-          <p className="text-3xl font-semibold tracking-tight tabular-nums">
-            {value}
-          </p>
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-2 rounded-lg p-4",
+        waiting ? "bg-primary text-primary-foreground" : "bg-muted"
+      )}
+    >
+      <p
+        className={cn(
+          "flex items-center gap-1.5 text-[13px]/4.5 font-semibold",
+          !waiting && "text-muted-foreground"
         )}
-        <p className="text-xs text-muted-foreground">{hint || " "}</p>
-      </CardContent>
-    </Card>
+      >
+        <Icon className="size-4 shrink-0" />
+        <span className="truncate">{label}</span>
+      </p>
+      {value === undefined ? (
+        <Skeleton className="h-9 w-14" />
+      ) : (
+        <p className="title-stat">{value}</p>
+      )}
+      <p className={cn("text-[13px]/4.5", !waiting && "text-muted-foreground")}>
+        {hint || " "}
+      </p>
+    </div>
   )
 }
 
@@ -223,25 +222,25 @@ function RecentConversations({
     )
 
   return (
-    <ul className="grid">
+    <ul className="flex flex-col">
       {page.items.map((item) => (
         <li key={item.id}>
           <Link
             href={`/conversations/${item.id}`}
-            className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/70"
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-accent"
           >
             <UserAvatar name={item.contact.name} className="size-9" />
-            <div className="grid min-w-0 flex-1 gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="truncate font-medium">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <div className="flex items-baseline gap-2">
+                <span className="truncate font-semibold">
                   {item.contact.name}
                 </span>
                 <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
                   {shortAge(item.updated_at, now)}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+              <div className="flex items-center gap-3">
+                <span className="min-w-0 flex-1 truncate text-[13px]/4.5 text-muted-foreground">
                   {item.last_message
                     ? who[item.last_message.role] + item.last_message.content
                     : "No messages yet"}
@@ -292,7 +291,7 @@ function Checklist({
   const done = steps.filter((s) => s.done).length
 
   return (
-    <Card>
+    <Card variant="tray">
       <CardHeader>
         <CardTitle>Get set up</CardTitle>
         <CardDescription>
@@ -300,9 +299,10 @@ function Checklist({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-1 px-2">
-        <div className="mx-2 mb-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        {/* Ink, not orange: setting up is not urgent. */}
+        <div className="mx-2 mb-2 h-1.5 overflow-hidden rounded-full bg-secondary">
           <div
-            className="h-full rounded-full bg-brand transition-all"
+            className="h-full rounded-full bg-foreground transition-all"
             style={{ width: `${(done / steps.length) * 100}%` }}
           />
         </div>
@@ -311,25 +311,26 @@ function Checklist({
             key={step.title}
             href={step.href}
             target={step.external ? "_blank" : undefined}
-            className="group flex items-start gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/70"
+            className="group flex items-start gap-3 rounded-md px-2 py-2 transition-colors hover:bg-accent"
           >
             {step.done ? (
-              <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-success" />
+              <CheckCircle2Icon className="mt-[3px] size-4 shrink-0 text-success" />
             ) : (
-              <CircleIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" />
+              <CircleIcon className="mt-[3px] size-4 shrink-0 text-muted-foreground" />
             )}
             <span className="grid flex-1 gap-0.5">
               <span
                 className={cn(
-                  "font-medium",
+                  "font-semibold",
                   step.done && "text-muted-foreground line-through"
                 )}
               >
                 {step.title}
               </span>
-              <span className="text-xs text-muted-foreground">{step.text}</span>
+              <span className="text-[13px]/4.5 text-muted-foreground">
+                {step.text}
+              </span>
             </span>
-            <ArrowRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </Link>
         ))}
       </CardContent>
@@ -351,11 +352,11 @@ function SystemCard({ health }: { health: Health }) {
           { name: "AI models", ok: null },
         ]
   return (
-    <Card size="sm">
+    <Card variant="tray">
       <CardHeader>
         <CardTitle>System</CardTitle>
         <CardAction>
-          <Button asChild variant="ghost" size="xs">
+          <Button asChild variant="ghost" size="sm">
             <Link href="/system">Details</Link>
           </Button>
         </CardAction>
@@ -369,7 +370,7 @@ function SystemCard({ health }: { health: Health }) {
               }
             />
             <span>{row.name}</span>
-            <span className="ml-auto text-xs text-muted-foreground">
+            <span className="ml-auto text-[13px]/4.5 text-muted-foreground">
               {row.ok === null ? "—" : row.ok ? "Operational" : "Down"}
             </span>
           </div>

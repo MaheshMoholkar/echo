@@ -55,7 +55,7 @@ async function load(): Promise<State> {
 
 function Field({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="flex justify-between gap-4 py-1.5 text-xs">
+    <div className="flex justify-between gap-4 py-1 text-[13px]/5">
       <span className="font-mono text-muted-foreground">{label}</span>
       <span className="truncate font-mono">{String(value ?? "—")}</span>
     </div>
@@ -103,15 +103,15 @@ function Verified({
 }: Extract<State, { kind: "done" }>) {
   return (
     <CardContent className="grid gap-4 md:grid-cols-2">
-      <div className="rounded-lg border p-3">
-        <p className="mb-1 flex items-center gap-2 text-sm font-medium">
+      <div className="rounded-lg bg-muted p-4">
+        <p className="mb-1 flex items-center gap-2 text-sm font-semibold">
           <KeyRoundIcon className="size-4 text-muted-foreground" />
           Token claims
         </p>
-        <p className="mb-2 text-xs text-muted-foreground">
+        <p className="mb-2 text-[13px]/4.5 text-muted-foreground">
           Decoded in the browser, so not trusted.
         </p>
-        <div className="divide-y">
+        <div>
           <Field label="sub" value={claims.sub} />
           <Field label="orgId" value={claims.orgId} />
           <Field label="aud" value={claims.aud} />
@@ -119,8 +119,8 @@ function Verified({
           <Field label="expires" value={`in ${minutesLeft} min`} />
         </div>
       </div>
-      <div className="rounded-lg border p-3">
-        <p className="mb-1 flex items-center gap-2 text-sm font-medium">
+      <div className="rounded-lg bg-muted p-4">
+        <p className="mb-1 flex items-center gap-2 text-sm font-semibold">
           <ShieldCheckIcon className="size-4 text-muted-foreground" />
           GET /v1/me
           <Badge
@@ -130,13 +130,13 @@ function Verified({
             {status}
           </Badge>
         </p>
-        <p className="mb-2 text-xs text-muted-foreground">
+        <p className="mb-2 text-[13px]/4.5 text-muted-foreground">
           {verified
             ? "Signature, issuer, audience and expiry checked with the public key from /api/auth/jwks."
             : "FastAPI rejected the token."}
         </p>
         {verified && (
-          <div className="divide-y">
+          <div>
             <Field label="user_id" value={verified.user_id} />
             <Field label="org_id" value={verified.org_id} />
             <Field label="email" value={verified.email} />

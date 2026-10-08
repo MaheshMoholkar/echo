@@ -1,6 +1,6 @@
 "use client"
 
-import { ExternalLinkIcon } from "lucide-react"
+import { ArrowUpRightIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -27,11 +27,11 @@ export function SiteHeader({ organizationId }: { organizationId: string }) {
         orientation="vertical"
         className="mr-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-center"
       />
-      <h2 className="text-sm font-medium">{title}</h2>
+      <h2 className="text-sm font-semibold">{title}</h2>
       <Button asChild variant="outline" size="sm" className="ml-auto">
         <Link href={`/widget?organizationId=${organizationId}`} target="_blank">
           Open widget
-          <ExternalLinkIcon />
+          <ArrowUpRightIcon />
         </Link>
       </Button>
     </header>

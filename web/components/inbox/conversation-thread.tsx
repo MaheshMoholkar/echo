@@ -2,106 +2,72 @@
 
 import {
   ArrowLeftIcon,
-  BotIcon,
+  ArrowUpIcon,
   CheckIcon,
-  HeadsetIcon,
   RotateCcwIcon,
-  SendIcon,
   SparklesIcon,
   UserRoundIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { Fragment, useEffect, useRef, useState } from "react"
 
+import { Bubble } from "@/components/bubble"
+import { EchoGlyph } from "@/components/logo"
 import { StatusBadge } from "@/components/status"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { UserAvatar } from "@/components/user-avatar"
+import { EchoAvatar, TeamAvatar, UserAvatar } from "@/components/user-avatar"
 import { dayLabel, time } from "@/lib/format"
 import { inboxApi, type OperatorConversation } from "@/lib/inbox-api"
 import { useNow } from "@/lib/use-now"
-import { cn } from "@/lib/utils"
 import type { ConversationStatus, Message } from "@/lib/widget-api"
 
 const POLL_MS = 3000 // the customer and the AI keep writing while you read
 
-function RoleAvatar({ message, name }: { message: Message; name: string }) {
-  if (message.role === "customer")
-    return <UserAvatar name={name} className="size-8" />
-  return (
-    <span
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full text-white",
-        message.role === "assistant" ? "bg-brand" : "bg-foreground"
-      )}
-    >
-      {message.role === "assistant" ? (
-        <BotIcon className="size-4" />
-      ) : (
-        <HeadsetIcon className="size-4 text-background" />
-      )}
-    </span>
-  )
-}
-
-function Bubble({
+/**
+ * One message, from the operator's side: the customer comes in on a tray,
+ * Echo goes out on an outlined sheet, the team goes out in ink.
+ */
+function ThreadMessage({
   message,
   name,
   first,
+  last,
 }: {
   message: Message
   name: string
-  // The first of a run by the same author: show who and when.
+  // The first and last of a run by the same author. The last one carries
+  // the avatar and says who and when.
   first: boolean
+  last: boolean
 }) {
-  const customer = message.role === "customer"
+  const { role } = message
   const author =
-    message.role === "customer"
-      ? name
-      : message.role === "assistant"
-        ? "Echo AI"
-        : "Team"
+    role === "assistant" ? "Echo AI · " : role === "operator" ? "Team · " : ""
   return (
-    <div
-      className={cn(
-        "flex gap-2.5",
-        customer ? "flex-row" : "flex-row-reverse",
-        first ? "mt-3" : "mt-0.5"
-      )}
+    <Bubble
+      side={role === "customer" ? "in" : "out"}
+      tone={
+        role === "customer" ? "tray" : role === "assistant" ? "line" : "ink"
+      }
+      className={first ? "mt-4" : "mt-1.5"}
+      avatar={
+        !last ? (
+          <span className="w-7 shrink-0" />
+        ) : role === "customer" ? (
+          <UserAvatar name={name} className="size-7" />
+        ) : role === "assistant" ? (
+          <EchoAvatar />
+        ) : (
+          <TeamAvatar />
+        )
+      }
+      meta={last && author + time(message.created_at)}
     >
-      <div className="w-8 shrink-0">
-        {first && <RoleAvatar message={message} name={name} />}
-      </div>
-      <div
-        className={cn(
-          "flex max-w-[75%] flex-col gap-1",
-          customer ? "items-start" : "items-end"
-        )}
-      >
-        {first && (
-          <span className="px-1 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground/80">{author}</span>
-            {" · "}
-            {time(message.created_at)}
-          </span>
-        )}
-        <p
-          className={cn(
-            "rounded-2xl px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap",
-            customer &&
-              "rounded-tl-md bg-background shadow-xs ring-1 ring-foreground/10",
-            message.role === "assistant" &&
-              "rounded-tr-md bg-accent text-accent-foreground",
-            message.role === "operator" &&
-              "rounded-tr-md bg-primary text-primary-foreground"
-          )}
-        >
-          {message.content}
-        </p>
-      </div>
-    </div>
+      {message.content}
+    </Bubble>
   )
 }
 
@@ -152,16 +118,18 @@ function Details({ conversation }: { conversation: OperatorConversation }) {
   ]
 
   return (
-    <aside className="hidden min-h-0 overflow-y-auto border-l xl:block">
-      <div className="flex flex-col items-center gap-1 border-b px-4 py-6 text-center">
-        <UserAvatar name={contact.name} className="mb-2 size-14 text-base" />
-        <p className="font-medium">{contact.name}</p>
-        <a
-          href={`mailto:${contact.email}`}
-          className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-        >
-          {contact.email}
-        </a>
+    <aside className="hidden min-h-0 flex-col gap-6 overflow-y-auto border-l p-5 xl:flex">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <UserAvatar name={contact.name} className="size-12" />
+        <div className="grid min-w-0">
+          <p className="truncate font-semibold">{contact.name}</p>
+          <a
+            href={`mailto:${contact.email}`}
+            className="truncate text-[13px]/4.5 text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {contact.email}
+          </a>
+        </div>
       </div>
       <Section title="Conversation">
         {about.map(([label, value]) => (
@@ -191,11 +159,11 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="border-b px-4 py-4">
-      <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+    <section>
+      <h3 className="mb-2 text-[13px]/4.5 font-semibold text-muted-foreground">
         {title}
       </h3>
-      <dl className="grid gap-2 text-sm">{children}</dl>
+      <dl className="grid gap-2 text-[13px]/4.5">{children}</dl>
     </section>
   )
 }
@@ -210,32 +178,33 @@ function Row({
   children: React.ReactNode
 }) {
   return (
-    <div className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="truncate" title={title}>
+    <div className="flex items-center justify-between gap-4">
+      <dt className="shrink-0 text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-right font-medium" title={title}>
         {children}
       </dd>
     </div>
   )
 }
 
-// What an operator can do in each status: the main action goes last.
+// What an operator can do in each status. These change who holds the
+// conversation, so they are outline buttons: the one orange button in a
+// thread is Send.
 const actions: Record<
   ConversationStatus,
   {
     label: string
     status: ConversationStatus
-    icon: typeof BotIcon
-    primary?: boolean
+    icon: React.ComponentType<{ className?: string }>
   }[]
 > = {
   unresolved: [
     { label: "Take over", status: "escalated", icon: UserRoundIcon },
-    { label: "Resolve", status: "resolved", icon: CheckIcon, primary: true },
+    { label: "Resolve", status: "resolved", icon: CheckIcon },
   ],
   escalated: [
-    { label: "Hand back to AI", status: "unresolved", icon: BotIcon },
-    { label: "Resolve", status: "resolved", icon: CheckIcon, primary: true },
+    { label: "Hand back to AI", status: "unresolved", icon: EchoGlyph },
+    { label: "Resolve", status: "resolved", icon: CheckIcon },
   ],
   resolved: [{ label: "Reopen", status: "escalated", icon: RotateCcwIcon }],
 }
@@ -330,12 +299,12 @@ export function ConversationThread({ id }: { id: string }) {
 
   const { contact, messages, status } = conversation
   const resolved = status === "resolved"
-  const canSend = !resolved && !!draft.trim() && busy === null
+  const canSend = !!draft.trim() && busy === null
 
   return (
-    <div className="grid h-full xl:grid-cols-[1fr_18rem]">
+    <div className="grid h-full xl:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="flex min-h-0 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 md:pl-2">
           <Button
             asChild
             variant="ghost"
@@ -348,8 +317,8 @@ export function ConversationThread({ id }: { id: string }) {
           </Button>
           <UserAvatar name={contact.name} className="size-9" />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{contact.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="truncate title-section">{contact.name}</p>
+            <p className="truncate text-[13px]/4.5 text-muted-foreground">
               {contact.email}
             </p>
           </div>
@@ -359,7 +328,7 @@ export function ConversationThread({ id }: { id: string }) {
               <Button
                 key={action.status}
                 size="sm"
-                variant={action.primary ? "default" : "outline"}
+                variant="outline"
                 disabled={busy !== null}
                 onClick={() => changeStatus(action.status)}
               >
@@ -370,26 +339,30 @@ export function ConversationThread({ id }: { id: string }) {
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/30">
-          <div className="mx-auto flex max-w-3xl flex-col px-4 py-6">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex max-w-3xl flex-col px-5 pt-2 pb-6">
             {messages.map((message, index) => {
               const previous = messages[index - 1]
+              const next = messages[index + 1]
               const day = dayLabel(message.created_at, now)
               const newDay =
                 !previous || dayLabel(previous.created_at, now) !== day
               return (
                 <Fragment key={message.id}>
                   {newDay && (
-                    <div className="my-3 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="h-px flex-1 bg-border" />
+                    <p className="mt-4 self-center text-xs font-semibold text-muted-foreground">
                       {day}
-                      <span className="h-px flex-1 bg-border" />
-                    </div>
+                    </p>
                   )}
-                  <Bubble
+                  <ThreadMessage
                     message={message}
                     name={contact.name}
                     first={newDay || previous.role !== message.role}
+                    last={
+                      !next ||
+                      next.role !== message.role ||
+                      dayLabel(next.created_at, now) !== day
+                    }
                   />
                 </Fragment>
               )
@@ -398,22 +371,22 @@ export function ConversationThread({ id }: { id: string }) {
           </div>
         </div>
 
-        <form onSubmit={send} className="shrink-0 border-t bg-background p-4">
-          <div className="mx-auto grid max-w-3xl gap-3">
+        <form onSubmit={send} className="shrink-0 px-5 pb-5">
+          <div className="mx-auto grid max-w-3xl gap-2">
             {status === "unresolved" && (
-              <p className="flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-xs text-primary ring-1 ring-primary/15">
-                <BotIcon className="size-3.5 shrink-0" />
+              <p className="flex items-center gap-1.5 text-[13px]/4.5 text-muted-foreground">
+                <EchoGlyph className="size-3.5" />
                 The AI is answering this conversation. Sending a reply takes it
                 over.
               </p>
             )}
-            {resolved && (
-              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+            {resolved ? (
+              <div className="flex items-center gap-2 rounded-lg bg-muted py-3 pr-3 pl-4 text-[13px]/4.5 text-muted-foreground">
                 <CheckIcon className="size-3.5 shrink-0" />
                 This conversation is resolved.
                 <Button
                   type="button"
-                  size="xs"
+                  size="sm"
                   variant="outline"
                   className="ml-auto"
                   disabled={busy !== null}
@@ -422,55 +395,50 @@ export function ConversationThread({ id }: { id: string }) {
                   Reopen to reply
                 </Button>
               </div>
-            )}
-            <div className="rounded-xl border bg-background shadow-xs transition-shadow focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
-              <Textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    (event.metaKey || event.ctrlKey)
-                  ) {
-                    event.preventDefault()
-                    event.currentTarget.form?.requestSubmit()
-                  }
-                }}
-                placeholder={
-                  resolved
-                    ? "Reopen the conversation to reply"
-                    : "Write a reply…"
-                }
-                disabled={resolved || busy !== null}
-                rows={3}
-                maxLength={4000}
-                className="min-h-20 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
-              />
-              <div className="flex items-center gap-2 p-2 pt-0">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={!canSend}
-                  onClick={enhance}
-                  title="Rewrite the draft clearly and politely, keeping every fact"
-                >
-                  {busy === "enhance" ? (
-                    <Spinner />
-                  ) : (
-                    <SparklesIcon className="text-primary" />
-                  )}
-                  Enhance
-                </Button>
-                <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-                  ⌘ Enter to send
-                </span>
-                <Button type="submit" size="sm" disabled={!canSend}>
-                  {busy === "send" ? <Spinner /> : <SendIcon />}
-                  Send
-                </Button>
+            ) : (
+              <div className="rounded-lg border border-input bg-card outline-2 outline-offset-2 outline-transparent transition-colors focus-within:border-foreground has-[textarea:focus-visible]:outline-ring">
+                <Textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === "Enter" &&
+                      (event.metaKey || event.ctrlKey)
+                    ) {
+                      event.preventDefault()
+                      event.currentTarget.form?.requestSubmit()
+                    }
+                  }}
+                  placeholder={`Reply to ${contact.name.split(" ")[0]}…`}
+                  disabled={busy !== null}
+                  rows={2}
+                  maxLength={4000}
+                  className="min-h-16 resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 outline-none!"
+                />
+                <div className="flex items-center gap-2 p-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={!canSend}
+                    onClick={enhance}
+                    title="Rewrite the draft clearly and politely, keeping every fact"
+                  >
+                    {busy === "enhance" ? <Spinner /> : <SparklesIcon />}
+                    Enhance
+                  </Button>
+                  <span className="ml-auto hidden items-center gap-1 text-xs text-muted-foreground sm:flex">
+                    <Key>⌘</Key>
+                    <Key>Enter</Key>
+                    to send
+                  </span>
+                  <Button type="submit" size="sm" disabled={!canSend}>
+                    Send
+                    {busy === "send" ? <Spinner /> : <ArrowUpIcon />}
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         </form>
@@ -478,5 +446,13 @@ export function ConversationThread({ id }: { id: string }) {
 
       <Details conversation={conversation} />
     </div>
+  )
+}
+
+function Key({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-muted px-1.5 font-sans text-[11px] font-semibold">
+      {children}
+    </kbd>
   )
 }

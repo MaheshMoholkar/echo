@@ -2,7 +2,6 @@
 
 import {
   ArrowLeftIcon,
-  BotIcon,
   ChevronRightIcon,
   LoaderIcon,
   MicIcon,
@@ -11,10 +10,12 @@ import {
 } from "lucide-react"
 import { useEffect, useEffectEvent, useState } from "react"
 
+import { Echoes, EchoGlyph } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/spinner"
+import { EchoAvatar } from "@/components/user-avatar"
 import { initials, shortAge } from "@/lib/format"
 import { useNow } from "@/lib/use-now"
 import { cn } from "@/lib/utils"
@@ -25,12 +26,12 @@ import {
   type ConversationSummary,
 } from "@/lib/widget-api"
 
-/** The business's badge: its initials on a glassy square. */
+/** The business's badge: its initial on an ink bubble. */
 function OrgBadge({ name, className }: { name: string; className?: string }) {
   return (
     <span
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-sm font-semibold ring-1 ring-white/25",
+        "flex size-9 shrink-0 items-center justify-center rounded-md rounded-bl-tail bg-primary-foreground font-display text-[17px] font-bold text-primary",
         className
       )}
     >
@@ -39,41 +40,19 @@ function OrgBadge({ name, className }: { name: string; className?: string }) {
   )
 }
 
-/** The assistant's avatar, optionally with a green "online" dot. Glass:
- * for the brand-colored header. */
-export function AssistantAvatar({
-  className,
-  online,
-  glass,
-}: {
-  className?: string
-  online?: boolean
-  glass?: boolean
-}) {
-  return (
-    <span
-      className={cn(
-        "relative flex size-7 shrink-0 items-center justify-center rounded-full text-white",
-        glass ? "bg-white/15 ring-1 ring-white/25" : "bg-brand",
-        className
-      )}
-    >
-      <BotIcon className="size-[55%]" />
-      {online && (
-        <span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-emerald-400 ring-2 ring-primary" />
-      )}
-    </span>
-  )
-}
-
 export function PoweredBy() {
   return (
-    <p className="shrink-0 py-2 text-center text-[11px] text-muted-foreground">
-      Powered by <span className="font-semibold text-foreground/70">Echo</span>
+    <p className="flex shrink-0 items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground">
+      <EchoGlyph className="size-3 text-foreground" />
+      <span>
+        Powered by <span className="font-semibold text-foreground">Echo</span>
+      </span>
     </p>
   )
 }
 
+/** The greeting: one of the two orange surfaces (the other is the sign-in
+ * panel). It asks the customer to speak, and everything on it is ink. */
 function HomeHeader({
   orgName,
   title,
@@ -84,20 +63,21 @@ function HomeHeader({
   subtitle: string
 }) {
   return (
-    <header className="relative shrink-0 overflow-hidden bg-brand px-6 pt-6 pb-20 text-white">
-      <div className="absolute -top-16 -right-16 size-48 rounded-full bg-white/10 blur-2xl" />
+    <header className="relative shrink-0 overflow-hidden bg-primary px-6 pt-6 pb-20 text-primary-foreground">
+      <Echoes sizes={[90, 160, 230]} className="-top-[100px] -right-[110px]" />
       <div className="relative flex items-center gap-2.5">
         <OrgBadge name={orgName} />
-        <span className="truncate font-medium">{orgName}</span>
+        <span className="truncate font-semibold">{orgName}</span>
       </div>
       <div className="relative mt-8 grid gap-1">
-        <p className="text-3xl font-semibold tracking-tight">{title}</p>
-        <p className="text-lg text-white/80">{subtitle}</p>
+        <p className="title-greeting">{title}</p>
+        <p className="text-[17px]/6 font-medium">{subtitle}</p>
       </div>
     </header>
   )
 }
 
+/** The quiet bar on every other screen. */
 export function BackHeader({
   title,
   subtitle,
@@ -110,21 +90,15 @@ export function BackHeader({
   avatar?: React.ReactNode
 }) {
   return (
-    <header className="flex shrink-0 items-center gap-2 bg-brand px-2 py-3 text-white">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-white hover:bg-white/15 hover:text-white"
-        onClick={onBack}
-        aria-label="Back"
-      >
+    <header className="flex shrink-0 items-center gap-2 border-b p-2">
+      <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
         <ArrowLeftIcon />
       </Button>
       {avatar}
-      <div className="grid min-w-0 leading-tight">
-        <p className="truncate font-semibold">{title}</p>
+      <div className={cn("grid min-w-0", !avatar && "pl-1")}>
+        <p className="truncate text-sm/4.5 font-semibold">{title}</p>
         {subtitle && (
-          <p className="truncate text-xs text-white/75">{subtitle}</p>
+          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
         )}
       </div>
     </header>
@@ -142,10 +116,10 @@ export function LoadingScreen() {
 export function ErrorScreen({ message }: { message: string }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+      <span className="flex size-11 items-center justify-center rounded-xl rounded-bl-tail bg-destructive-soft text-destructive">
         <TriangleAlertIcon className="size-5" />
       </span>
-      <p className="font-medium">Something&apos;s not right</p>
+      <p className="title-section">Something&apos;s not right</p>
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   )
@@ -185,16 +159,17 @@ export function AuthScreen({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <HomeHeader
         orgName={orgName}
-        title="Hi there 👋"
+        title="Hi there"
         subtitle="Ask us anything. We're here to help."
       />
       <form
         onSubmit={onSubmit}
-        className="relative mx-4 -mt-12 grid gap-4 rounded-2xl bg-card p-5 shadow-lg ring-1 ring-foreground/5"
+        // The cards ride up over the greeting, so they cast a shadow.
+        className="relative mx-4 -mt-12 grid gap-4 rounded-xl bg-card p-5 shadow-overlay"
       >
         <div className="grid gap-1">
-          <p className="font-semibold">Start a conversation</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[15px]/5.5 font-semibold">Start a conversation</p>
+          <p className="text-[13px]/4.5 text-muted-foreground">
             Tell us who you are so we can follow up.
           </p>
         </div>
@@ -222,7 +197,7 @@ export function AuthScreen({
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button type="submit" disabled={pending} className="h-10">
+        <Button type="submit" size="lg" disabled={pending}>
           {pending && <Spinner />}
           Continue
         </Button>
@@ -251,13 +226,14 @@ function ActionCard({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="group flex items-center gap-3 rounded-2xl bg-card p-4 text-left shadow-md ring-1 ring-foreground/5 transition hover:shadow-lg hover:ring-primary/30 disabled:opacity-60"
+      className="group flex items-center gap-3 rounded-xl bg-card p-4 text-left shadow-overlay focus-ring transition-transform hover:-translate-y-px disabled:opacity-50"
     >
-      <div className="grid flex-1 gap-0.5">
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm text-muted-foreground">{text}</p>
+      <div className="grid flex-1">
+        <p className="text-[15px]/5.5 font-semibold">{title}</p>
+        <p className="text-[13px]/4.5 text-muted-foreground">{text}</p>
       </div>
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition group-hover:scale-105">
+      {/* The orange disc is the invitation: it is the customer's turn. */}
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
         <Icon className="size-4" />
       </span>
     </button>
@@ -308,7 +284,7 @@ export function SelectionScreen({
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <HomeHeader
         orgName={orgName}
-        title={firstName ? `Hi ${firstName} 👋` : "Hi there 👋"}
+        title={firstName ? `Hi ${firstName}` : "Hi there"}
         subtitle="How can we help today?"
       />
       <div className="relative -mt-12 grid gap-3 px-4">
@@ -328,13 +304,13 @@ export function SelectionScreen({
         />
         {error && <p className="text-sm text-destructive">{error}</p>}
         {!!recent?.length && (
-          <div className="rounded-2xl bg-card shadow-md ring-1 ring-foreground/5">
+          <div className="rounded-xl bg-card shadow-overlay">
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
               <p className="text-sm font-semibold">Recent conversations</p>
               {recent.length > 3 && (
                 <button
                   onClick={onInbox}
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-semibold text-primary-text hover:underline"
                 >
                   See all
                 </button>
@@ -355,11 +331,8 @@ const customerStatus: Record<
   ConversationSummary["status"],
   { label: string; className: string }
 > = {
-  unresolved: { label: "Open", className: "text-primary" },
-  escalated: {
-    label: "With our team",
-    className: "text-amber-700 dark:text-amber-300",
-  },
+  unresolved: { label: "Open", className: "text-foreground" },
+  escalated: { label: "With our team", className: "text-primary-text" },
   resolved: { label: "Closed", className: "text-muted-foreground" },
 }
 
@@ -405,15 +378,15 @@ function ConversationRows({
           <button
             key={conversation.id}
             onClick={() => onOpen(conversation.id)}
-            className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
+            className="flex items-center gap-3 rounded-lg p-2.5 text-left focus-ring transition-colors hover:bg-accent"
           >
-            <AssistantAvatar className="size-9" />
+            <EchoAvatar className="size-9" />
             <div className="grid min-w-0 flex-1 gap-0.5">
               <p className="truncate text-sm">
                 {conversation.last_message?.content ?? "New conversation"}
               </p>
               <p className="text-xs text-muted-foreground">
-                <span className={cn("font-medium", status.className)}>
+                <span className={cn("font-semibold", status.className)}>
                   {status.label}
                 </span>
                 {" · "}

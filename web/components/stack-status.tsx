@@ -33,21 +33,19 @@ function Row({
 }) {
   return (
     <div className="flex items-center gap-4 py-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{name}</p>
-        <div className="truncate text-xs text-muted-foreground">{detail}</div>
+        <p className="font-semibold">{name}</p>
+        <div className="truncate text-[13px]/4.5 text-muted-foreground">
+          {detail}
+        </div>
       </div>
       <span
         className={cn(
-          "flex items-center gap-2 text-xs font-medium",
-          ok === null
-            ? "text-muted-foreground"
-            : ok
-              ? "text-emerald-700 dark:text-emerald-300"
-              : "text-destructive"
+          "flex items-center gap-2 text-[13px]/4.5 font-medium",
+          ok === null ? "text-muted-foreground" : !ok && "text-destructive"
         )}
       >
         <Dot

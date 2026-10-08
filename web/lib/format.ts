@@ -8,21 +8,21 @@ export function initials(name: string, letters: 1 | 2 = 2) {
   return (first + second).toUpperCase()
 }
 
-// Soft backgrounds for avatars, picked by name so a person keeps theirs.
-const AVATAR_COLORS = [
-  "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300",
-  "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
-  "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300",
-  "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
-  "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
-  "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300",
-  "bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300",
+// Pale tints behind initials, picked by name so a person keeps theirs. They
+// tell rows apart; they never mean a status.
+const AVATAR_TINTS = [
+  "bg-avatar-1",
+  "bg-avatar-2",
+  "bg-avatar-3",
+  "bg-avatar-4",
+  "bg-avatar-5",
+  "bg-avatar-6",
 ]
 
-export function avatarColor(name: string) {
+export function avatarTint(name: string) {
   let hash = 0
   for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) | 0
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+  return AVATAR_TINTS[Math.abs(hash) % AVATAR_TINTS.length]
 }
 
 const MINUTE = 60_000
