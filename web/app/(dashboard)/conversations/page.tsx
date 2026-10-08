@@ -12,8 +12,8 @@ export default function ConversationsPage() {
   return (
     <Empty className="h-full">
       <EmptyHeader>
-        <EmptyMedia variant="icon" className="size-12 rounded-xl">
-          <MessagesSquareIcon className="size-6" />
+        <EmptyMedia variant="icon">
+          <MessagesSquareIcon />
         </EmptyMedia>
         <EmptyTitle>Select a conversation</EmptyTitle>
         <EmptyDescription>

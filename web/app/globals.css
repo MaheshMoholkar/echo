@@ -5,8 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  /* 14px is the interface size, on a 22px line. */
+  --text-sm--line-height: calc(22 / 14);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -20,18 +24,29 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-avatar-6: var(--avatar-6);
+  --color-avatar-5: var(--avatar-5);
+  --color-avatar-4: var(--avatar-4);
+  --color-avatar-3: var(--avatar-3);
+  --color-avatar-2: var(--avatar-2);
+  --color-avatar-1: var(--avatar-1);
+  --color-scrim: var(--scrim);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-destructive-soft: var(--destructive-soft);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
-  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-text: var(--primary-text);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-popover-foreground: var(--popover-foreground);
@@ -40,93 +55,147 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* tail: the tight corner of a bubble. md: controls. lg: trays and sheets.
+     xl: bubbles and things that float. */
+  --radius-tail: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+  --radius-4xl: 32px;
+  --shadow-overlay: var(--shadow-overlay);
+  --shadow-dialog: var(--shadow-dialog);
+  --animate-echo: echo 1.8s ease-out infinite;
+  --animate-echo-dot: echo-dot 2s ease-out infinite;
+
+  @keyframes echo {
+    from {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    to {
+      transform: scale(1.7);
+      opacity: 0;
+    }
+  }
+  @keyframes echo-dot {
+    from {
+      transform: scale(0.6);
+      opacity: 0.7;
+    }
+    to {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
 }
 
-/* Echo's palette: an indigo brand on cool, slightly blue-grey neutrals.
-   Status colors: success (resolved, ready), warning (escalated). */
+/* Echo's palette. One rule: orange (primary) means it is your turn. It marks
+   an escalated conversation and the one main button of a screen, fills the
+   two brand surfaces (the widget's greeting, the sign-in panel) and the logo,
+   and nothing else. Everything else is ink on a sheet (background), on a desk
+   (sidebar), with soft trays (muted) to group things. See docs/ui.md. */
 :root {
   --background: oklch(1 0 0);
-  --foreground: oklch(0.21 0.02 275);
+  --foreground: oklch(0.22 0.012 55);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 275);
+  --card-foreground: oklch(0.22 0.012 55);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 275);
-  --primary: oklch(0.52 0.22 277);
-  --primary-foreground: oklch(0.985 0.005 277);
-  --secondary: oklch(0.965 0.006 277);
-  --secondary-foreground: oklch(0.3 0.03 277);
-  --muted: oklch(0.967 0.004 275);
-  --muted-foreground: oklch(0.53 0.02 275);
-  --accent: oklch(0.955 0.02 277);
-  --accent-foreground: oklch(0.38 0.14 277);
-  --destructive: oklch(0.58 0.22 25);
-  --success: oklch(0.6 0.14 158);
-  --warning: oklch(0.72 0.16 65);
-  --border: oklch(0.915 0.008 275);
-  --input: oklch(0.9 0.01 275);
-  --ring: oklch(0.52 0.22 277 / 60%);
-  --chart-1: oklch(0.52 0.22 277);
-  --chart-2: oklch(0.6 0.14 158);
-  --chart-3: oklch(0.72 0.16 65);
-  --chart-4: oklch(0.62 0.2 320);
-  --chart-5: oklch(0.65 0.13 220);
+  --popover-foreground: oklch(0.22 0.012 55);
+  --muted: oklch(0.962 0.005 75);
+  --muted-foreground: oklch(0.49 0.012 60);
+  --secondary: oklch(0.935 0.006 75);
+  --secondary-foreground: oklch(0.22 0.012 55);
+  --accent: oklch(0.935 0.006 75);
+  --accent-foreground: oklch(0.22 0.012 55);
+  --border: oklch(0.91 0.006 75);
+  /* The edge of fields and outline buttons: 3:1 on the sheet. */
+  --input: oklch(0.6 0.012 60);
+  --ring: oklch(0.22 0.012 55);
+  --scrim: oklch(0.22 0.012 55 / 32%);
+  /* Orange carries ink, never white. Same value in both themes. */
+  --primary: oklch(0.68 0.195 44);
+  --primary-foreground: oklch(0.22 0.012 55);
+  --primary-text: oklch(0.53 0.165 42);
+  --primary-soft: oklch(0.955 0.035 62);
+  --success: oklch(0.52 0.13 155);
+  --destructive: oklch(0.55 0.21 27);
+  --destructive-soft: oklch(0.955 0.03 25);
+  --destructive-solid: oklch(0.56 0.215 27);
+  --destructive-foreground: oklch(1 0 0);
+  /* Pale tints behind initials, so rows can be told apart. */
+  --avatar-1: oklch(0.9 0.05 95);
+  --avatar-2: oklch(0.9 0.045 150);
+  --avatar-3: oklch(0.9 0.04 205);
+  --avatar-4: oklch(0.9 0.04 265);
+  --avatar-5: oklch(0.9 0.04 325);
+  --avatar-6: oklch(0.9 0.04 15);
+  --chart-1: oklch(0.68 0.195 44);
+  --chart-2: oklch(0.22 0.012 55);
+  --chart-3: oklch(0.49 0.012 60);
+  --chart-4: oklch(0.52 0.13 155);
+  --chart-5: oklch(0.55 0.21 27);
   --radius: 0.625rem;
-  --sidebar: oklch(0.975 0.004 275);
-  --sidebar-foreground: oklch(0.32 0.02 275);
-  --sidebar-primary: oklch(0.52 0.22 277);
-  --sidebar-primary-foreground: oklch(0.985 0.005 277);
-  --sidebar-accent: oklch(0.935 0.01 275);
-  --sidebar-accent-foreground: oklch(0.21 0.02 275);
-  --sidebar-border: oklch(0.915 0.008 275);
-  --sidebar-ring: oklch(0.52 0.22 277 / 60%);
+  --sidebar: oklch(0.962 0.005 75);
+  --sidebar-foreground: oklch(0.22 0.012 55);
+  --sidebar-primary: oklch(0.68 0.195 44);
+  --sidebar-primary-foreground: oklch(0.22 0.012 55);
+  --sidebar-accent: oklch(1 0 0);
+  --sidebar-accent-foreground: oklch(0.22 0.012 55);
+  --sidebar-border: oklch(0.91 0.006 75);
+  --sidebar-ring: oklch(0.22 0.012 55);
+  --shadow-overlay: 0 1px 2px #1f1a150f, 0 10px 28px -8px #1f1a152e;
+  --shadow-dialog: 0 2px 4px #1f1a150f, 0 24px 56px -12px #1f1a1547;
 }
 
+/* Dark: lifted things get lighter. Desk, then sheet, then tray, then card. */
 .dark {
-  --background: oklch(0.175 0.012 275);
-  --foreground: oklch(0.96 0.005 275);
-  --card: oklch(0.205 0.014 275);
-  --card-foreground: oklch(0.96 0.005 275);
-  --popover: oklch(0.215 0.014 275);
-  --popover-foreground: oklch(0.96 0.005 275);
-  --primary: oklch(0.63 0.19 277);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.26 0.016 275);
-  --secondary-foreground: oklch(0.94 0.005 275);
-  --muted: oklch(0.245 0.014 275);
-  --muted-foreground: oklch(0.68 0.018 275);
-  --accent: oklch(0.29 0.05 277);
-  --accent-foreground: oklch(0.88 0.06 277);
-  --destructive: oklch(0.68 0.19 22);
-  --success: oklch(0.7 0.14 158);
-  --warning: oklch(0.78 0.15 70);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.63 0.19 277 / 60%);
-  --chart-1: oklch(0.63 0.19 277);
-  --chart-2: oklch(0.7 0.14 158);
-  --chart-3: oklch(0.78 0.15 70);
-  --chart-4: oklch(0.68 0.19 320);
-  --chart-5: oklch(0.7 0.12 220);
-  --sidebar: oklch(0.145 0.012 275);
-  --sidebar-foreground: oklch(0.8 0.012 275);
-  --sidebar-primary: oklch(0.63 0.19 277);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.235 0.016 275);
-  --sidebar-accent-foreground: oklch(0.96 0.005 275);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.63 0.19 277 / 60%);
+  --background: oklch(0.205 0.006 60);
+  --foreground: oklch(0.96 0.004 75);
+  --card: oklch(0.295 0.008 60);
+  --card-foreground: oklch(0.96 0.004 75);
+  --popover: oklch(0.295 0.008 60);
+  --popover-foreground: oklch(0.96 0.004 75);
+  --muted: oklch(0.255 0.007 60);
+  --muted-foreground: oklch(0.75 0.01 75);
+  --secondary: oklch(0.34 0.008 60);
+  --secondary-foreground: oklch(0.96 0.004 75);
+  --accent: oklch(0.34 0.008 60);
+  --accent-foreground: oklch(0.96 0.004 75);
+  --border: oklch(0.36 0.008 60);
+  --input: oklch(0.6 0.01 70);
+  --ring: oklch(0.96 0.004 75);
+  --scrim: oklch(0.1 0.005 60 / 62%);
+  --primary-text: oklch(0.8 0.15 55);
+  --primary-soft: oklch(0.32 0.06 50);
+  --success: oklch(0.78 0.15 155);
+  --destructive: oklch(0.73 0.17 25);
+  --destructive-soft: oklch(0.31 0.07 25);
+  --avatar-1: oklch(0.4 0.05 95);
+  --avatar-2: oklch(0.4 0.05 150);
+  --avatar-3: oklch(0.4 0.045 205);
+  --avatar-4: oklch(0.4 0.05 265);
+  --avatar-5: oklch(0.4 0.05 325);
+  --avatar-6: oklch(0.4 0.05 15);
+  --chart-2: oklch(0.96 0.004 75);
+  --chart-3: oklch(0.75 0.01 75);
+  --chart-4: oklch(0.78 0.15 155);
+  --chart-5: oklch(0.73 0.17 25);
+  --sidebar: oklch(0.168 0.005 60);
+  --sidebar-foreground: oklch(0.96 0.004 75);
+  --sidebar-accent: oklch(0.265 0.007 60);
+  --sidebar-accent-foreground: oklch(0.96 0.004 75);
+  --sidebar-border: oklch(0.36 0.008 60);
+  --sidebar-ring: oklch(0.96 0.004 75);
+  --shadow-overlay: 0 1px 2px #00000066, 0 12px 32px -8px #000000a6;
+  --shadow-dialog: 0 2px 4px #00000066, 0 24px 64px -12px #000000bf;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
@@ -134,26 +203,64 @@
   html {
     @apply font-sans;
   }
-  h1,
-  h2,
-  h3 {
-    @apply tracking-tight;
+  /* Focus is the shape's echo: the same outline, one step out, in ink. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--foreground);
+  }
+  .lucide {
+    stroke-width: 1.9;
   }
 }
 
-/* The brand gradient: the logo, the widget's header, the sign-in panel. */
-@utility bg-brand {
-  background-image: linear-gradient(
-    135deg,
-    oklch(0.5 0.23 277),
-    oklch(0.55 0.24 300)
-  );
+/* The same focus ring for controls that reset their outline. */
+@utility focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  &:focus-visible {
+    outline-color: var(--ring);
+  }
 }
 
-/* Faint grid lines for large brand surfaces. */
-@utility bg-grid {
-  background-image:
-    linear-gradient(to right, oklch(1 0 0 / 6%) 1px, transparent 1px),
-    linear-gradient(to bottom, oklch(1 0 0 / 6%) 1px, transparent 1px);
-  background-size: 32px 32px;
+/* Display type: Gabarito, for headings, greetings and the numbers that
+   matter. Named title-*, not text-*, so cn() never mistakes one for a color. */
+@utility title-hero {
+  font-family: var(--font-display);
+  font-size: 52px;
+  line-height: 54px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+@utility title-greeting {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+@utility title-stat {
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+@utility title-page {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+@utility title-section {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
 }

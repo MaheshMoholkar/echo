@@ -71,7 +71,7 @@ export function OrgPicker({ email }: { email: string }) {
   return (
     <div className="grid gap-8">
       <div className="grid gap-2">
-        <h1 className="text-2xl font-semibold">
+        <h1 className="title-page">
           {hasOrganizations
             ? "Choose an organization"
             : "Set up your organization"}
@@ -83,8 +83,8 @@ export function OrgPicker({ email }: { email: string }) {
 
       {isPending && (
         <div className="grid gap-2">
-          <Skeleton className="h-14 rounded-xl" />
-          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-14 rounded-lg" />
+          <Skeleton className="h-14 rounded-lg" />
         </div>
       )}
       {hasOrganizations && (
@@ -94,10 +94,10 @@ export function OrgPicker({ email }: { email: string }) {
               key={org.id}
               disabled={busy}
               onClick={() => choose(org.id)}
-              className="flex items-center gap-3 rounded-xl border bg-card px-3 py-3 text-left shadow-xs transition-colors hover:border-primary/40 hover:bg-accent/40 disabled:opacity-60"
+              className="flex items-center gap-3 rounded-lg border bg-card p-3 text-left focus-ring transition-colors hover:border-foreground disabled:opacity-50"
             >
               <UserAvatar name={org.name} square className="size-9" />
-              <span className="flex-1 truncate font-medium">{org.name}</span>
+              <span className="flex-1 truncate font-semibold">{org.name}</span>
               <ChevronRightIcon className="size-4 text-muted-foreground" />
             </button>
           ))}
@@ -123,7 +123,7 @@ export function OrgPicker({ email }: { email: string }) {
           />
         </div>
         {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-md bg-destructive-soft px-3 py-2 text-[13px]/4.5 font-medium text-destructive">
             {error}
           </p>
         )}
@@ -131,7 +131,7 @@ export function OrgPicker({ email }: { email: string }) {
           type="submit"
           disabled={busy}
           variant={hasOrganizations ? "outline" : "default"}
-          className="h-10"
+          size="lg"
         >
           {busy && <Spinner />}
           Create organization
@@ -142,7 +142,7 @@ export function OrgPicker({ email }: { email: string }) {
         Signed in as {email} ·{" "}
         <button
           onClick={signOut}
-          className="font-medium hover:text-foreground hover:underline"
+          className="font-semibold hover:text-foreground hover:underline"
         >
           Sign out
         </button>

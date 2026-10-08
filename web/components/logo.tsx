@@ -1,48 +1,82 @@
 import { cn } from "@/lib/utils"
 
-/** Echo's mark: a speech bubble with a sound wave, on the brand gradient
- * (glass: on a surface that already is the brand gradient). */
-export function LogoMark({
-  className,
-  glass,
-}: {
-  className?: string
-  glass?: boolean
-}) {
+// Echo's mark: a speech bubble with its tight corner bottom-left, and its
+// echo, an open outline of the same bubble one step up and to the right.
+const ECHO = "M11.19 7.5A6 6 0 0 1 17 3h6a6 6 0 0 1 6 6v6a6 6 0 0 1-4.5 5.81"
+const BUBBLE =
+  "M9 11h6a6 6 0 0 1 6 6v6a6 6 0 0 1-6 6H4.5A1.5 1.5 0 0 1 3 27.5V17a6 6 0 0 1 6-6z"
+
+/** The mark in one ink (the text color): Echo the assistant inside the
+ * product, and the mark on an orange surface. */
+export function EchoGlyph({ className }: { className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white",
-        glass
-          ? "bg-white/15 ring-1 ring-white/25"
-          : "bg-brand shadow-sm shadow-primary/30",
-        className
-      )}
+    <svg
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden
+      className={cn("size-4 shrink-0", className)}
     >
-      <svg viewBox="0 0 32 32" className="size-[70%]" aria-hidden>
-        <path
-          d="M8.5 20.5V11.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H13l-4.5 3.5z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M13 13.5v2M16 12v5M19 13.5v2"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    </span>
+      <path
+        d={ECHO}
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+      <path d={BUBBLE} fill="currentColor" />
+    </svg>
   )
+}
+
+/** The brand mark, in orange. */
+export function LogoMark({ className }: { className?: string }) {
+  return <EchoGlyph className={cn("size-8 text-primary", className)} />
 }
 
 export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("flex items-center gap-2", className)}>
       <LogoMark />
-      <span className="text-lg font-semibold tracking-tight">Echo</span>
+      <span className="font-display text-[22px]/7 font-extrabold tracking-[-0.02em]">
+        Echo
+      </span>
     </span>
+  )
+}
+
+/** Large outlines of the bubble for the two orange surfaces: ink at 16%.
+ * Each one is `size` wide; position the svg with className. */
+export function Echoes({
+  sizes,
+  className,
+}: {
+  // Outline sizes in px. The outlines are concentric.
+  sizes: number[]
+  className?: string
+}) {
+  const box = Math.max(...sizes)
+  return (
+    <svg
+      viewBox={`0 0 ${box} ${box}`}
+      fill="none"
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute stroke-primary-foreground opacity-[0.16]",
+        className
+      )}
+      style={{ width: box, height: box }}
+    >
+      {sizes.map((size) => {
+        const offset = (box - size) / 2
+        const r = size * 0.3
+        const t = size * 0.07
+        return (
+          <path
+            key={size}
+            strokeWidth="2"
+            d={`M${offset + r} ${offset}h${size - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${size - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}H${offset + t}a${t} ${t} 0 0 1 ${-t} ${-t}V${offset + r}a${r} ${r} 0 0 1 ${r} ${-r}z`}
+          />
+        )
+      })}
+    </svg>
   )
 }

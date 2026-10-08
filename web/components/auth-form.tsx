@@ -73,7 +73,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   return (
     <div className="grid gap-8">
       <div className="grid gap-2">
-        <h1 className="text-2xl font-semibold">{text.title}</h1>
+        <h1 className="title-page">{text.title}</h1>
         <p className="text-sm text-muted-foreground">{text.description}</p>
       </div>
       <form onSubmit={onSubmit} className="grid gap-5">
@@ -128,11 +128,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </InputGroup>
         </div>
         {error && (
-          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p className="rounded-md bg-destructive-soft px-3 py-2 text-[13px]/4.5 font-medium text-destructive">
             {error}
           </p>
         )}
-        <Button type="submit" disabled={pending} className="h-10">
+        <Button type="submit" size="lg" disabled={pending}>
           {pending && <Spinner />}
           {text.submit}
         </Button>
@@ -141,7 +141,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         {text.switchText}{" "}
         <Link
           href={text.switchLink.href}
-          className="font-medium text-primary hover:underline"
+          className="font-semibold text-primary-text hover:underline"
         >
           {text.switchLink.label}
         </Link>

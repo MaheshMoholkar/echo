@@ -1,16 +1,13 @@
 import {
   BookOpenIcon,
-  ExternalLinkIcon,
   MessageSquareTextIcon,
   MicIcon,
   UserRoundIcon,
 } from "lucide-react"
 import type { Metadata } from "next"
-import Link from "next/link"
 
 import { CopyButton } from "@/components/copy-button"
 import { PageContainer, PageHeading } from "@/components/page-container"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -60,16 +57,11 @@ export default async function InstallPage() {
 
   return (
     <PageContainer>
+      {/* Open widget is one row up, in the header of every page. */}
       <PageHeading
         title="Widget"
         description="Chat and voice support for your customers, on any website."
-      >
-        <Button asChild>
-          <Link href={path} target="_blank">
-            Open widget <ExternalLinkIcon />
-          </Link>
-        </Button>
-      </PageHeading>
+      />
 
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_auto]">
         <div className="flex min-w-0 flex-col gap-6">
@@ -79,15 +71,18 @@ export default async function InstallPage() {
               <CardDescription>
                 Paste it into your site&apos;s HTML where the widget should
                 appear.{" "}
-                <code className="text-xs">allow=&quot;microphone&quot;</code>{" "}
+                <code className="font-mono text-xs text-foreground">
+                  allow=&quot;microphone&quot;
+                </code>{" "}
                 lets customers call.
               </CardDescription>
               <CardAction>
-                <CopyButton text={snippet} />
+                {/* What this page is for: the one orange button. */}
+                <CopyButton text={snippet} variant="default" />
               </CardAction>
             </CardHeader>
             <CardContent>
-              <pre className="overflow-x-auto rounded-lg bg-zinc-950 p-4 font-mono text-xs leading-relaxed text-zinc-100 dark:bg-black/40">
+              <pre className="overflow-x-auto rounded-lg bg-muted p-4 font-mono text-[13px]/5">
                 {snippet}
               </pre>
             </CardContent>
@@ -101,22 +96,20 @@ export default async function InstallPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex gap-2">
-              <code className="flex h-8 min-w-0 flex-1 items-center truncate rounded-lg border bg-muted/50 px-3 font-mono text-xs">
+              <code className="block h-8 min-w-0 flex-1 truncate rounded-md bg-muted px-3 font-mono text-[13px]/8">
                 {url}
               </code>
               <CopyButton text={url} label="Copy link" />
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-4 gap-y-5 px-1 sm:grid-cols-2">
             {features.map((feature) => (
               <div key={feature.title} className="flex gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <feature.icon className="size-4" />
-                </span>
+                <feature.icon className="mt-0.5 size-5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">{feature.title}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm font-semibold">{feature.title}</p>
+                  <p className="text-[13px]/4.5 text-muted-foreground">
                     {feature.text}
                   </p>
                 </div>
@@ -126,14 +119,14 @@ export default async function InstallPage() {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          <p className="text-[13px]/4.5 font-semibold text-muted-foreground">
             Live preview
           </p>
           <iframe
             src={path}
             title="Widget preview"
             allow="microphone"
-            className="h-[600px] w-[380px] max-w-full rounded-2xl bg-background shadow-2xl ring-1 shadow-primary/10 ring-foreground/10"
+            className="h-[600px] w-[380px] max-w-full rounded-xl bg-background ring-1 ring-border"
           />
         </div>
       </div>

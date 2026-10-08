@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Figtree, Gabarito, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -7,7 +7,14 @@ import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
+// Gabarito for headings and the numbers that matter, Figtree for the
+// interface, Geist Mono for things you copy.
+const fontSans = Figtree({ subsets: ["latin"], variable: "--font-sans" })
+
+const fontDisplay = Gabarito({
+  subsets: ["latin"],
+  variable: "--font-display",
+})
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -31,8 +38,9 @@ export default function RootLayout({
       className={cn(
         "antialiased",
         fontMono.variable,
+        fontDisplay.variable,
         "font-sans",
-        geist.variable
+        fontSans.variable
       )}
     >
       <body>

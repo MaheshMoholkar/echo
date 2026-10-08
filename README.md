@@ -169,7 +169,7 @@ mic → Silero VAD + Smart Turn v3 → Whisper (MLX) → knowledge search
 web/     Next.js: dashboard, widget, Better Auth
 api/     FastAPI: widget API, agents, knowledge base, inbox (echo_api)
 voice/   Pipecat voice bot; reuses echo_api for search and the database
-docs/    architecture diagram, sample knowledge base (used by make seed)
+docs/    architecture diagram, UI rules (ui.md), sample knowledge base (used by make seed)
 ```
 
 ## Notes

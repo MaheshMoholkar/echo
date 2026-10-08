@@ -92,12 +92,13 @@ export function AppSidebar({ user, organization }: Props) {
                     tooltip={item.label}
                   >
                     <Link href={item.href}>
-                      <item.icon />
+                      <item.icon className="text-muted-foreground group-data-active/menu-button:text-foreground" />
                       <span>{item.label}</span>
                     </Link>
                   </SidebarMenuButton>
                   {item.href === "/conversations" && !!stats?.escalated && (
-                    <SidebarMenuBadge className="rounded-full bg-warning/15 text-amber-700 dark:text-amber-300">
+                    // Orange: these conversations are waiting for a person.
+                    <SidebarMenuBadge className="rounded-full bg-primary font-semibold text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-active/menu-button:text-primary-foreground">
                       {stats.escalated}
                     </SidebarMenuBadge>
                   )}
@@ -117,7 +118,7 @@ export function AppSidebar({ user, organization }: Props) {
                   tooltip="System status"
                 >
                   <Link href="/system">
-                    <ActivityIcon />
+                    <ActivityIcon className="text-muted-foreground group-data-active/menu-button:text-foreground" />
                     <span>System status</span>
                   </Link>
                 </SidebarMenuButton>
@@ -163,12 +164,15 @@ function OrganizationSwitcher({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent"
             >
-              <LogoMark />
+              {/* In a span: the button sizes its own svg children as icons. */}
+              <span className="flex size-8 shrink-0 items-center justify-center">
+                <LogoMark />
+              </span>
               <div className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-sm font-semibold">
                   {organization.name}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="truncate text-xs font-normal text-muted-foreground">
                   Echo workspace
                 </span>
               </div>
@@ -230,10 +234,10 @@ function UserMenu({ user }: { user: Props["user"] }) {
             >
               <UserAvatar name={user.name} />
               <div className="grid flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-medium">
+                <span className="truncate text-sm font-semibold">
                   {user.name}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="truncate text-xs font-normal text-muted-foreground">
                   {user.email}
                 </span>
               </div>

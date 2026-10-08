@@ -16,7 +16,6 @@ import {
 } from "@pipecat-ai/client-react"
 import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport"
 import {
-  BotIcon,
   MessageSquareTextIcon,
   MicIcon,
   MicOffIcon,
@@ -25,14 +24,12 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { EchoGlyph } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { Bubble } from "@/components/widget/chat-screen"
-import {
-  AssistantAvatar,
-  BackHeader,
-  PoweredBy,
-} from "@/components/widget/screens"
+import { EchoAvatar } from "@/components/user-avatar"
+import { WidgetMessage } from "@/components/widget/chat-screen"
+import { BackHeader, PoweredBy } from "@/components/widget/screens"
 import { cn } from "@/lib/utils"
 
 // speaking: the words heard so far of the piece the bot is saying.
@@ -74,6 +71,46 @@ export function VoiceScreen(props: {
       <PipecatClientAudio />
       <VoiceCall {...props} />
     </PipecatClientProvider>
+  )
+}
+
+/**
+ * Echo on a call. Sound is drawn as echoes: rings leaving the mark while
+ * someone speaks. Ink while Echo speaks, orange while the customer does,
+ * because it is their turn.
+ */
+export function CallOrb({
+  connecting,
+  speaker,
+}: {
+  connecting?: boolean
+  speaker?: "echo" | "customer" | null
+}) {
+  return (
+    <div className="relative my-4 flex size-18 items-center justify-center rounded-full bg-foreground text-background">
+      {speaker &&
+        [0, 300, 600].map((delay, index) => (
+          <span
+            key={delay}
+            className={cn(
+              "absolute inset-0 rounded-full border-2 motion-safe:animate-echo",
+              speaker === "echo" ? "border-foreground" : "border-primary",
+              // Without motion the rings hold still at three sizes.
+              [
+                "motion-reduce:scale-[1.22] motion-reduce:opacity-55",
+                "motion-reduce:scale-[1.44] motion-reduce:opacity-30",
+                "motion-reduce:scale-[1.66] motion-reduce:opacity-15",
+              ][index]
+            )}
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
+      {connecting ? (
+        <Spinner className="size-6" />
+      ) : (
+        <EchoGlyph className="size-[30px]" />
+      )}
+    </div>
   )
 }
 
@@ -178,40 +215,25 @@ function VoiceCall({
         title={orgName}
         subtitle={live ? "On a call" : "Voice call"}
         onBack={onBack}
-        avatar={<AssistantAvatar online={live} glass className="size-9" />}
+        avatar={<EchoAvatar online={live} className="size-9" />}
       />
 
-      <div className="flex shrink-0 flex-col items-center gap-3 border-b px-6 pt-8 pb-6">
-        <div className="relative flex size-24 items-center justify-center">
-          {live && (
-            <>
-              <span
-                className={cn(
-                  "absolute inset-0 rounded-full bg-primary/20 transition-transform duration-500",
-                  botSpeaking ? "scale-125 animate-pulse" : "scale-100"
-                )}
-              />
-              <span
-                className={cn(
-                  "absolute inset-0 rounded-full ring-2 transition-all",
-                  userSpeaking
-                    ? "scale-110 ring-emerald-400"
-                    : "ring-transparent"
-                )}
-              />
-            </>
-          )}
-          <span className="relative flex size-20 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-primary/30">
-            {state === "connecting" ? (
-              <Spinner className="size-7" />
-            ) : (
-              <BotIcon className="size-8" />
-            )}
-          </span>
-        </div>
+      <div className="flex shrink-0 flex-col items-center gap-3 border-b px-6 pt-10 pb-6 text-center">
+        <CallOrb
+          connecting={state === "connecting"}
+          speaker={
+            !live
+              ? null
+              : botSpeaking
+                ? "echo"
+                : userSpeaking
+                  ? "customer"
+                  : null
+          }
+        />
         <div className="grid justify-items-center gap-1">
-          <p className="font-semibold">{status}</p>
-          <div className="flex h-6 items-center text-primary">
+          <p className="title-section">{status}</p>
+          <div className="flex h-6 items-center text-foreground">
             {live ? (
               <VoiceVisualizer
                 participantType="bot"
@@ -223,7 +245,7 @@ function VoiceCall({
                 barMaxHeight={22}
               />
             ) : (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[13px]/4.5 text-muted-foreground">
                 {state === "idle"
                   ? "Ask anything, the way you'd ask a person."
                   : state === "ended"
@@ -238,12 +260,12 @@ function VoiceCall({
 
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
         {lines.length === 0 && (
-          <p className="my-auto text-center text-xs text-muted-foreground">
+          <p className="my-auto text-center text-[13px]/4.5 text-muted-foreground">
             Live captions of the call will appear here.
           </p>
         )}
         {lines.map((line, index) => (
-          <Bubble
+          <WidgetMessage
             key={index}
             message={{
               role: line.role === "user" ? "customer" : "assistant",
@@ -260,7 +282,7 @@ function VoiceCall({
               <Button
                 variant="outline"
                 size="icon-lg"
-                className="size-12 rounded-full"
+                className="size-12 rounded-full [&_svg:not([class*='size-'])]:size-5"
                 aria-label={isMicEnabled ? "Mute" : "Unmute"}
                 onClick={() => enableMic(!isMicEnabled)}
                 disabled={!live}
@@ -268,8 +290,9 @@ function VoiceCall({
                 {isMicEnabled ? <MicIcon /> : <MicOffIcon />}
               </Button>
               <Button
+                variant="danger"
                 size="icon-lg"
-                className="size-14 rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 hover:bg-red-700"
+                className="size-14 rounded-full"
                 aria-label="End call"
                 onClick={() => client?.disconnect()}
               >
@@ -277,14 +300,11 @@ function VoiceCall({
               </Button>
             </>
           ) : state === "ended" ? (
-            <Button className="h-11 flex-1 rounded-full" onClick={onChat}>
+            <Button size="lg" className="flex-1 rounded-full" onClick={onChat}>
               <MessageSquareTextIcon /> Continue in chat
             </Button>
           ) : (
-            <Button
-              className="h-11 flex-1 rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 hover:bg-emerald-700"
-              onClick={start}
-            >
+            <Button size="lg" className="flex-1 rounded-full" onClick={start}>
               <PhoneIcon /> Start call
             </Button>
           )}

@@ -13,6 +13,7 @@ import { useRef, useState } from "react"
 import { toast } from "sonner"
 
 import { PageHeading } from "@/components/page-container"
+import { Dot } from "@/components/status"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,35 +46,31 @@ import { cn } from "@/lib/utils"
 const ACCEPT = ".pdf,.docx,.md,.markdown,.txt,.html,.htm,.png,.jpg,.jpeg,.webp"
 const POLL_MS = 1500 // while something is still being processed
 
-function kind(filename: string) {
+// The icon says what kind of file it is. File types are not color-coded.
+function fileIcon(filename: string) {
   const ext = filename.split(".").pop()?.toLowerCase() ?? ""
-  if (ext === "pdf")
-    return { icon: FileTextIcon, tone: "bg-red-500/10 text-red-600", ext }
-  if (ext === "docx")
-    return { icon: FileTextIcon, tone: "bg-blue-500/10 text-blue-600", ext }
-  if (["png", "jpg", "jpeg", "webp"].includes(ext))
-    return { icon: ImageIcon, tone: "bg-violet-500/10 text-violet-600", ext }
-  if (["html", "htm"].includes(ext))
-    return { icon: FileCodeIcon, tone: "bg-orange-500/10 text-orange-600", ext }
-  return { icon: FileIcon, tone: "bg-muted text-muted-foreground", ext }
+  if (["pdf", "docx"].includes(ext)) return FileTextIcon
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) return ImageIcon
+  if (["html", "htm"].includes(ext)) return FileCodeIcon
+  return FileIcon
 }
 
 function StatusCell({ document }: { document: Document }) {
   if (document.status === "processing")
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+      <span className="inline-flex items-center gap-2 text-[13px]/4.5 font-medium text-muted-foreground">
         <Spinner className="size-3.5" /> Processing
       </span>
     )
   if (document.status === "error")
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
-        <span className="size-1.5 rounded-full bg-destructive" /> Failed
+      <span className="inline-flex items-center gap-2 text-[13px]/4.5 font-medium text-destructive">
+        <Dot tone="destructive" /> Failed
       </span>
     )
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-      <span className="size-1.5 rounded-full bg-success" /> Ready
+    <span className="inline-flex items-center gap-2 text-[13px]/4.5 font-medium">
+      <Dot tone="success" /> Ready
     </span>
   )
 }
@@ -161,14 +158,20 @@ export function KnowledgeBase() {
           setDragging(false)
           upload([...event.dataTransfer.files])
         }}
+        // Orange only while a file is over it: it is your turn to let go.
         className={cn(
-          "flex flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors",
+          "flex flex-col items-center gap-3 rounded-lg border-[1.5px] px-6 py-8 text-center focus-ring transition-colors",
           dragging
-            ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/40 hover:bg-muted/40"
+            ? "border-primary bg-primary-soft"
+            : "border-dashed border-input hover:bg-muted"
         )}
       >
-        <span className="flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <span
+          className={cn(
+            "flex size-11 items-center justify-center rounded-xl rounded-bl-tail transition-colors",
+            dragging ? "bg-primary text-primary-foreground" : "bg-secondary"
+          )}
+        >
           {uploading ? (
             <Spinner className="size-5" />
           ) : (
@@ -176,12 +179,19 @@ export function KnowledgeBase() {
           )}
         </span>
         <span className="grid gap-1">
-          <span className="text-sm font-medium">
+          <span className="text-sm font-semibold">
             {uploading
               ? `Uploading ${uploading} ${uploading === 1 ? "file" : "files"}…`
-              : "Drop files here, or click to browse"}
+              : dragging
+                ? "Drop to upload"
+                : "Drop files here, or click to browse"}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span
+            className={cn(
+              "text-[13px]/4.5",
+              !dragging && "text-muted-foreground"
+            )}
+          >
             PDF, Word, Markdown, text, HTML or images, up to 10 MB. Scans and
             images are read with OCR (a few seconds per page).
           </span>
@@ -189,10 +199,10 @@ export function KnowledgeBase() {
       </button>
 
       <Card className="gap-0 py-0">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <p className="font-medium">Documents</p>
+        <div className="flex items-baseline justify-between px-5 pt-4 pb-3">
+          <h2 className="title-section">Documents</h2>
           {documents && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[13px]/4.5 text-muted-foreground tabular-nums">
               {documents.length} {documents.length === 1 ? "file" : "files"} ·{" "}
               {chunks} searchable {chunks === 1 ? "passage" : "passages"}
             </p>
@@ -201,8 +211,8 @@ export function KnowledgeBase() {
         {error && <p className="p-4 text-sm text-destructive">{error}</p>}
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-full pl-4">Name</TableHead>
+            <TableRow className="border-t hover:bg-transparent">
+              <TableHead className="w-full pl-5">Name</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="hidden text-right sm:table-cell">
                 Passages
@@ -218,9 +228,9 @@ export function KnowledgeBase() {
             {!documents &&
               Array.from({ length: 3 }, (_, i) => (
                 <TableRow key={i}>
-                  <TableCell className="pl-4" colSpan={6}>
+                  <TableCell className="pl-5" colSpan={6}>
                     <div className="flex items-center gap-3">
-                      <Skeleton className="size-8 rounded-lg" />
+                      <Skeleton className="size-8" />
                       <Skeleton className="h-4 w-48" />
                     </div>
                   </TableCell>
@@ -237,21 +247,16 @@ export function KnowledgeBase() {
               </TableRow>
             )}
             {documents?.map((document) => {
-              const { icon: Icon, tone } = kind(document.filename)
+              const Icon = fileIcon(document.filename)
               return (
                 <TableRow key={document.id}>
-                  <TableCell className="w-full max-w-0 pl-4">
+                  <TableCell className="w-full max-w-0 pl-5">
                     <div className="flex items-center gap-3">
-                      <span
-                        className={cn(
-                          "flex size-8 shrink-0 items-center justify-center rounded-lg",
-                          tone
-                        )}
-                      >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-muted text-muted-foreground">
                         <Icon className="size-4" />
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate font-medium">
+                        <p className="truncate font-semibold">
                           {document.filename}
                         </p>
                         {document.error && (
@@ -281,7 +286,7 @@ export function KnowledgeBase() {
                       year: "numeric",
                     })}
                   </TableCell>
-                  <TableCell className="pr-3 text-right">
+                  <TableCell className="pr-4 text-right">
                     <DeleteButton
                       document={document}
                       onConfirm={() => remove(document)}
@@ -326,7 +331,7 @@ function DeleteButton({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+          <AlertDialogAction variant="danger" onClick={onConfirm}>
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>
